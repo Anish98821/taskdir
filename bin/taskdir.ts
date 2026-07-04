@@ -12,7 +12,7 @@ import { pathToFileURL } from "node:url";
 
 import { runInit, runMcp, runWeb } from "./cli.ts";
 
-const VERSION = "0.4.0";
+const VERSION = "0.4.1";
 
 function printHelp(): void {
   process.stdout.write(
@@ -110,7 +110,15 @@ async function dispatch(argv: string[]): Promise<void> {
   const command = argv[0];
   const rest = argv.slice(1);
 
-  if (!command || command === "help" || command === "--help" || command === "-h") {
+  if (!command) {
+    // No subcommand: if stdin isn't a TTY, we're being spawned over stdio
+    // (Claude Code MCP add, other MCP clients) — enter MCP mode. Interactive
+    // shells get the help output.
+    if (!process.stdin.isTTY) return runMcp();
+    printHelp();
+    return;
+  }
+  if (command === "help" || command === "--help" || command === "-h") {
     printHelp();
     return;
   }

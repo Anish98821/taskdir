@@ -59,7 +59,7 @@ Creates `.taskdir/config.toml`, a tasks directory (default `.taskdir/tasks`), an
 Register the MCP server with Claude Code so it shows up as a tool source on the next session:
 
 ```bash
-claude mcp add taskdir -- npx -y @anish98821/taskdir mcp
+claude mcp add taskdir -- npx -y @anish98821/taskdir
 ```
 
 Launch the web UI (auto-picks a free port, auto-opens the browser):

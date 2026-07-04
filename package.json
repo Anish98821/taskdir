@@ -5,8 +5,7 @@
   "license": "MIT",
   "repository": "github:Anish98821/taskdir",
   "publishConfig": {
-    "registry": "https://npm.pkg.github.com",
-    "access": "restricted"
+    "access": "public"
   },
   "scripts": {
     "dev": "next dev",

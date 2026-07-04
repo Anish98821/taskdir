@@ -38,7 +38,10 @@ await cp(`${standalone}/server.js`, `${out}/server.js`, cpOpts);
 // cache.
 await mkdir(`${out}/.next`, { recursive: true });
 const nextEntries = await (await import("node:fs/promises")).readdir(`${root}/.next`);
-const skip = new Set(["standalone", "cache"]);
+// Skip: `standalone` (unpacked separately above), `cache` (webpack incremental
+// build cache), `dev` (only exists if `next dev` was run — 300+ MB of nothing
+// prod needs), `diagnostics` / `trace` (developer telemetry).
+const skip = new Set(["standalone", "cache", "dev", "diagnostics", "trace", "trace-build"]);
 for (const name of nextEntries) {
   if (skip.has(name)) continue;
   await cp(`${root}/.next/${name}`, `${out}/.next/${name}`, cpOpts);

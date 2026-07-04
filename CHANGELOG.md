@@ -2,6 +2,16 @@
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [SemVer](https://semver.org/).
 
+## 0.4.3 — 2026-07-04
+
+### Added
+
+- First release cut through the GitHub Actions release workflow: publishes to npm with provenance, builds `taskdir.exe` on Windows CI, and attaches it to the GitHub Release.
+
+### Fixed
+
+- Sync `pnpm-lock.yaml` with `package.json` after removing `better-sqlite3` earlier in this cycle. CI's `pnpm install --frozen-lockfile` was going to fail against the stale lockfile.
+
 ## 0.4.2 — 2026-07-04
 
 ### Fixed

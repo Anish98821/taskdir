@@ -12,7 +12,7 @@ import { pathToFileURL } from "node:url";
 
 import { runInit, runMcp, runWeb } from "./cli.ts";
 
-const VERSION = "0.4.2";
+const VERSION = "0.4.3";
 
 function printHelp(): void {
   process.stdout.write(

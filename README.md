@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="./banner.png" alt="taskdir" width="600" />
+  <img src="https://raw.githubusercontent.com/Anish98821/taskdir/main/banner.png" alt="taskdir" width="600" />
 </p>
 
 # Taskdir

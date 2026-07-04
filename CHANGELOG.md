@@ -2,6 +2,12 @@
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [SemVer](https://semver.org/).
 
+## 0.4.2 — 2026-07-04
+
+### Fixed
+
+- README banner image now uses an absolute GitHub raw URL so it renders on npmjs.com (relative paths aren't reliably resolved by the registry's README viewer).
+
 ## 0.4.1 — 2026-07-04
 
 ### Changed

@@ -30,6 +30,11 @@ jobs:
           registry-url: 'https://registry.npmjs.org'
           cache: 'pnpm'
 
+      # Trusted Publishing needs npm >= 11.5.1 for OIDC support; node 22
+      # ships with an older npm.
+      - name: Upgrade npm
+        run: npm install -g npm@latest
+
       - name: Verify tag matches package.json version
         run: |
           TAG_VERSION="${GITHUB_REF_NAME#v}"
@@ -43,10 +48,12 @@ jobs:
 
       - run: pnpm test
 
+      # Uses npm Trusted Publishing (OIDC). No NPM_TOKEN required. The
+      # id-token: write permission at the workflow level is what lets npm
+      # verify the caller. Trusted publisher must be configured on npmjs.com
+      # for the `taskdir` package → GitHub → Anish98821/taskdir → release.yml.
       - name: Publish
         run: npm publish --provenance --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
   # ---------------------------------------------------------------------------
   # Build the single-file Windows executable. Must run on windows-latest

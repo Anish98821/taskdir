@@ -9,11 +9,11 @@ Initial release.
 ### Features
 
 - **Filesystem-backed task store.** Tasks live as folders under a configurable tasks directory: `<zero-padded-id>-<slug>/` with `status`, `meta.toml`, `context.md`, `clarification.md`, `report.md`. `git diff`, `cp -r`, `grep -r` all work.
-- **MCP surface.** Stdio server (`bin/taskdir-mcp.ts`) and HTTP route (`src/app/mcp/route.ts`) exposing `list_tasks`, `get_task`, `create_task`, `update_status`, `update_meta`, `append_to_file`, `create_file`, `rename_file`, `delete_file`, and `register_agent`.
+- **MCP surface.** Stdio server (`taskdir mcp`) and HTTP route (`src/app/mcp/route.ts`) exposing `list_tasks`, `get_task`, `create_task`, `update_status`, `update_meta`, `append_to_file`, `create_file`, `rename_file`, `delete_file`, and `register_agent`.
 - **Web UI.** Next.js 16 App Router + Tailwind v4. Task list with search/sort/status filter, right-side detail pane, optimistic metadata editing, markdown edit/preview with mtime-based conflict detection, notifications drawer (blocked / awaiting approval / unread reports), and a settings page with an `agents` tab and a `project` tab.
 - **Live updates.** Chokidar watcher invalidates the in-memory task index and streams change events to the browser via server-sent events.
 - **Agent routing.** Tasks carry an optional `agent` field in `meta.toml` scoping them to a specific registered agent id; unset means any agent may pick them up. Agents self-register through the `register_agent` MCP tool.
-- **CLI.** Unified `taskdir` executable plus per-command npm bins (`taskdir-init`, `taskdir-mcp`, `taskdir-web`):
+- **CLI.** Single `taskdir` executable exposing four subcommands:
   - `taskdir init` initialises `.taskdir/config.toml`, the tasks directory, and updates `.gitignore` when appropriate.
   - `taskdir mcp` runs the stdio MCP server for the current project.
   - `taskdir web` launches the web UI: probes the port and auto-increments if busy, shows a spinner while starting, suppresses the underlying Next.js output, and opens the default browser once ready.

@@ -113,7 +113,7 @@ This lets the UI update when an agent edits task files outside the browser.
 
 There are two MCP entrypoints:
 
-- `bin/taskdir-mcp.ts`: stdio MCP server for agents
+- `bin/taskdir.ts mcp`: stdio MCP server for agents
 - `src/app/mcp/route.ts`: HTTP route using the same handler
 
 Both delegate to `src/lib/mcp-handler.ts`, which delegates tool schemas and dispatch to `src/lib/mcp/tools.ts`.
@@ -135,7 +135,7 @@ Tool output is plain text JSON or short acknowledgements so it stays easy for ag
 
 ## Initialization
 
-`bin/taskdir-init.ts` initializes Taskdir inside any project:
+`taskdir init` initializes Taskdir inside any project:
 
 - creates `.taskdir/config.toml`
 - creates the configured task directory
@@ -178,15 +178,15 @@ npm run build
 For MCP changes, also smoke test stdio:
 
 ```bash
-'{"jsonrpc":"2.0","id":1,"method":"initialize"}' | node --experimental-strip-types --no-warnings bin/taskdir-mcp.ts
-'{"jsonrpc":"2.0","id":2,"method":"tools/list"}' | node --experimental-strip-types --no-warnings bin/taskdir-mcp.ts
+'{"jsonrpc":"2.0","id":1,"method":"initialize"}' | node --experimental-strip-types --no-warnings bin/taskdir.ts mcp
+'{"jsonrpc":"2.0","id":2,"method":"tools/list"}' | node --experimental-strip-types --no-warnings bin/taskdir.ts mcp
 ```
 
 For initialization changes:
 
 ```bash
-node --experimental-strip-types --no-warnings bin/taskdir-init.ts --help
-node --experimental-strip-types --no-warnings bin/taskdir-init.ts --yes
+node --experimental-strip-types --no-warnings bin/taskdir.ts init --help
+node --experimental-strip-types --no-warnings bin/taskdir.ts init --yes
 ```
 
 ## Refactor Rules

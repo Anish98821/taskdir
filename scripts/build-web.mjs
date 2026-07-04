@@ -70,7 +70,7 @@ const minimalPkg = {
 await writeFile(`${out}/package.json`, JSON.stringify(minimalPkg, null, 2) + "\n");
 
 // The npm tarball path leaves node_modules out (lazy install on first
-// `taskdir-web`), but the .exe build needs deps pre-installed so they
+// `taskdir web`), but the .exe build needs deps pre-installed so they
 // can be zipped into the SEA asset. Opt in via WITH_DEPS=1.
 if (process.env.WITH_DEPS === "1") {
   console.log("build-web: installing runtime deps into dist/web (flat)...");
@@ -91,6 +91,6 @@ if (process.env.WITH_DEPS === "1") {
 console.log(`build-web: wrote ${out}`);
 if (process.env.WITH_DEPS !== "1") {
   console.log(
-    "build-web: node_modules will be installed on first `taskdir-web` invocation.",
+    "build-web: node_modules will be installed on first `taskdir web` invocation.",
   );
 }

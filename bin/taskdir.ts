@@ -149,7 +149,7 @@ interface SeaApi {
 // In the CJS SEA bundle, `require` is the module-local require provided by
 // esbuild's CJS wrapper. In a real ESM environment (running this file via
 // --experimental-strip-types) it doesn't exist — but that path isn't shipped:
-// taskdir.ts is the SEA entry only; the npm bins use taskdir-init/mcp/run.ts.
+// taskdir.ts is the single entry for both the SEA .exe build and the npm bin.
 declare const require: ((id: string) => unknown) | undefined;
 
 function loadSea(): SeaApi | null {

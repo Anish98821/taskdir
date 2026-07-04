@@ -9,9 +9,7 @@ import { build } from "esbuild";
 import { chmod, mkdir, writeFile } from "node:fs/promises";
 
 const ENTRIES = [
-  { in: "bin/taskdir-init.ts", out: "dist/bin/taskdir-init.js" },
-  { in: "bin/taskdir-mcp.ts", out: "dist/bin/taskdir-mcp.js" },
-  { in: "bin/taskdir-web.ts", out: "dist/bin/taskdir-web.js" },
+  { in: "bin/taskdir.ts", out: "dist/bin/taskdir.js" },
 ];
 
 await mkdir("dist/bin", { recursive: true });
@@ -28,7 +26,11 @@ for (const entry of ENTRIES) {
     platform: "node",
     format: "esm",
     target: "node20",
-    external: ["fsevents", "chokidar"],
+    // SEA-only branches inside bin/taskdir.ts reference `node:sea` and
+    // `adm-zip` via require(). They're gated by isSea() so never execute in
+    // the ESM npm bundle, but esbuild still sees the calls — mark them
+    // external so the bundle isn't rejected.
+    external: ["fsevents", "chokidar", "adm-zip"],
     logLevel: "info",
   });
   // Make the bundled output executable on POSIX. Harmless on Windows.

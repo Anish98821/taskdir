@@ -1,5 +1,5 @@
-// Shared command implementations used by both the per-command npm bins
-// (taskdir-init / taskdir-mcp / taskdir-web) and the unified `taskdir.exe`.
+// Shared command implementations invoked from the unified `taskdir` dispatcher
+// (bin/taskdir.ts) — used by both the npm bin and the SEA `taskdir.exe`.
 
 import { spawn, spawnSync } from "node:child_process";
 import crypto from "node:crypto";
@@ -596,7 +596,7 @@ export async function runWeb(argv: string[], opts: RunOpts): Promise<void> {
   const serverPath = path.join(opts.webDir, "server.js");
   if (!existsSync(serverPath)) {
     process.stderr.write(
-      `taskdir-web: web bundle not found at ${serverPath}\n` +
+      `taskdir web: web bundle not found at ${serverPath}\n` +
         `(this build is missing the standalone Next.js server)\n`,
     );
     process.exit(1);

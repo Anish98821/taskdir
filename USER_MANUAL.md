@@ -35,7 +35,7 @@ By default in this repo, tasks are read from `./tasks/` unless `TASKDIR_TASKS_DI
 From the project you want to track:
 
 ```bash
-node --experimental-strip-types --no-warnings C:\Projects\taskdir\bin\taskdir-init.ts --yes
+node --experimental-strip-types --no-warnings C:\Projects\taskdir\bin\taskdir.ts init --yes
 ```
 
 By default this creates:
@@ -56,10 +56,10 @@ tasks_dir = ".taskdir/tasks"
 To choose a different task location:
 
 ```bash
-node --experimental-strip-types --no-warnings C:\Projects\taskdir\bin\taskdir-init.ts --tasks-dir tasks
+node --experimental-strip-types --no-warnings C:\Projects\taskdir\bin\taskdir.ts init --tasks-dir tasks
 ```
 
-If the target project is a Git repo and the tasks directory is inside the project, `taskdir-init` adds that directory to `.gitignore`. This keeps local agent task state out of the project repo by default.
+If the target project is a Git repo and the tasks directory is inside the project, `taskdir init` adds that directory to `.gitignore`. This keeps local agent task state out of the project repo by default.
 
 ## Point Taskdir At Another Project
 
@@ -77,7 +77,7 @@ Or launch Taskdir from a directory that has `.taskdir/config.toml`; the task ser
 Use the stdio MCP server:
 
 ```bash
-node --experimental-strip-types --no-warnings C:\Projects\taskdir\bin\taskdir-mcp.ts
+node --experimental-strip-types --no-warnings C:\Projects\taskdir\bin\taskdir.ts mcp
 ```
 
 Set `TASKDIR_TASKS_DIR` in the agent's MCP environment if the agent should operate on a specific project:
@@ -172,6 +172,6 @@ npm run build
 For MCP changes:
 
 ```bash
-'{"jsonrpc":"2.0","id":1,"method":"initialize"}' | node --experimental-strip-types --no-warnings bin/taskdir-mcp.ts
-'{"jsonrpc":"2.0","id":2,"method":"tools/list"}' | node --experimental-strip-types --no-warnings bin/taskdir-mcp.ts
+'{"jsonrpc":"2.0","id":1,"method":"initialize"}' | node --experimental-strip-types --no-warnings bin/taskdir.ts mcp
+'{"jsonrpc":"2.0","id":2,"method":"tools/list"}' | node --experimental-strip-types --no-warnings bin/taskdir.ts mcp
 ```

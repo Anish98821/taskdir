@@ -49,7 +49,7 @@ Tasks live as folders on disk. `git diff`, `cp -r`, `grep -r` all work. Agents c
 ## Install into a project
 
 ```bash
-npx taskdir-init
+npx taskdir init
 ```
 
 Creates `.taskdir/config.toml`, a tasks directory (default `.taskdir/tasks`), and `.taskdir/README.md`. Adds the tasks directory to `.gitignore` if a `.git` exists. Drop `AGENTS.md` into the repo so agents know the protocol.
@@ -58,7 +58,7 @@ The same package ships the UI/server — run it from the project root.
 
 ## CLI
 
-The package installs a unified `taskdir` executable (via `taskdir install`) and three per-command npm bins (`taskdir-init`, `taskdir-mcp`, `taskdir-web`). Each subcommand operates on the current working directory.
+A single `taskdir` executable is installed by the npm package (and by the SEA build's `taskdir install`). Each subcommand operates on the current working directory.
 
 ```
 taskdir init [options]         initialise .taskdir/ in the current directory
@@ -100,8 +100,8 @@ npm run build
 MCP stdio smoke test:
 
 ```bash
-'{"jsonrpc":"2.0","id":1,"method":"initialize"}' | node --experimental-strip-types --no-warnings bin/taskdir-mcp.ts
-'{"jsonrpc":"2.0","id":2,"method":"tools/list"}' | node --experimental-strip-types --no-warnings bin/taskdir-mcp.ts
+'{"jsonrpc":"2.0","id":1,"method":"initialize"}' | node --experimental-strip-types --no-warnings bin/taskdir.ts mcp
+'{"jsonrpc":"2.0","id":2,"method":"tools/list"}' | node --experimental-strip-types --no-warnings bin/taskdir.ts mcp
 ```
 
 See `ARCHITECTURE.md` and `USER_MANUAL.md` for details.

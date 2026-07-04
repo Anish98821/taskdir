@@ -6,7 +6,8 @@
       "args": [
         "--experimental-strip-types",
         "--no-warnings",
-        "bin/taskdir-mcp.ts"
+        "bin/taskdir.ts",
+        "mcp"
       ]
     }
   }

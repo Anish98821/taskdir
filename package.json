@@ -17,19 +17,15 @@
     "start": "next start",
     "lint": "eslint",
     "test": "node --no-warnings --experimental-strip-types --test src/**/*.test.ts",
-    "mcp:stdio": "node --experimental-strip-types --no-warnings bin/taskdir-mcp.ts",
-    "init": "node --experimental-strip-types --no-warnings bin/taskdir-init.ts",
+    "mcp:stdio": "node --experimental-strip-types --no-warnings bin/taskdir.ts mcp",
+    "init": "node --experimental-strip-types --no-warnings bin/taskdir.ts init",
     "prepack": "npm run build:cli && npm run build:web"
   },
   "bin": {
-    "taskdir-init": "dist/bin/taskdir-init.js",
-    "taskdir-mcp": "dist/bin/taskdir-mcp.js",
-    "taskdir-web": "dist/bin/taskdir-web.js"
+    "taskdir": "dist/bin/taskdir.js"
   },
   "files": [
-    "dist/bin/taskdir-init.js",
-    "dist/bin/taskdir-mcp.js",
-    "dist/bin/taskdir-web.js",
+    "dist/bin/taskdir.js",
     "dist/bin/package.json",
     "dist/web/",
     "AGENTS.md",

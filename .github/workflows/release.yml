@@ -1,0 +1,113 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write   # create GitHub Release + upload assets
+  id-token: write   # npm provenance (optional but nice)
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Publish the package to public npmjs.com. `prepack` (defined in package.json)
+  # runs build:cli + build:web before the tarball is packed, so no explicit
+  # build step is needed here.
+  # ---------------------------------------------------------------------------
+  publish-npm:
+    name: Publish to npm
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          registry-url: 'https://registry.npmjs.org'
+          cache: 'pnpm'
+
+      - name: Verify tag matches package.json version
+        run: |
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          PKG_VERSION=$(node -p "require('./package.json').version")
+          if [ "$TAG_VERSION" != "$PKG_VERSION" ]; then
+            echo "Tag $TAG_VERSION does not match package.json version $PKG_VERSION" >&2
+            exit 1
+          fi
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm test
+
+      - name: Publish
+        run: npm publish --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+  # ---------------------------------------------------------------------------
+  # Build the single-file Windows executable. Must run on windows-latest
+  # because SEA post-jects the blob into a Windows node.exe.
+  # ---------------------------------------------------------------------------
+  build-exe:
+    name: Build Windows .exe
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm run build:exe
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: taskdir-exe
+          path: dist/taskdir.exe
+          if-no-files-found: error
+          retention-days: 7
+
+  # ---------------------------------------------------------------------------
+  # Create the GitHub Release with the .exe attached and this version's
+  # CHANGELOG section as the release body.
+  # ---------------------------------------------------------------------------
+  release:
+    name: Create GitHub Release
+    needs: [publish-npm, build-exe]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: taskdir-exe
+          path: ./release
+
+      - name: Extract this version's changelog section
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          awk -v v="$VERSION" '
+            /^## / { if (found) exit; if ($2 == v) { found=1; next } }
+            found { print }
+          ' CHANGELOG.md > release-notes.md
+          echo "--- release notes ---"
+          cat release-notes.md
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: ./release/taskdir.exe
+          body_path: release-notes.md
+          fail_on_unmatched_files: true
+          draft: false
+          prerelease: false

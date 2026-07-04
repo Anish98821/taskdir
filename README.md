@@ -51,7 +51,7 @@ Tasks live as folders on disk. `git diff`, `cp -r`, `grep -r` all work. Agents c
 Initialise `.taskdir/` in the current directory:
 
 ```bash
-npx -y taskdir init
+npx -y @anish98821/taskdir init
 ```
 
 Creates `.taskdir/config.toml`, a tasks directory (default `.taskdir/tasks`), and `.taskdir/README.md`. Adds the tasks directory to `.gitignore` if a `.git` exists. Drop `AGENTS.md` into the repo so agents know the protocol.
@@ -59,19 +59,19 @@ Creates `.taskdir/config.toml`, a tasks directory (default `.taskdir/tasks`), an
 Register the MCP server with Claude Code so it shows up as a tool source on the next session:
 
 ```bash
-claude mcp add taskdir -- npx -y taskdir
+claude mcp add taskdir -- npx -y @anish98821/taskdir
 ```
 
 Launch the web UI (auto-picks a free port, auto-opens the browser):
 
 ```bash
-npx -y taskdir web
+npx -y @anish98821/taskdir web
 ```
 
 Global install if you'd rather type `taskdir` directly:
 
 ```bash
-npm install -g taskdir
+npm install -g @anish98821/taskdir
 taskdir init
 taskdir web
 ```

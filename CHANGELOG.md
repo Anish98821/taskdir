@@ -6,7 +6,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [S
 
 ### Changed
 
-- Running `taskdir` with no subcommand now enters MCP stdio mode when stdin is not a TTY (Claude Code and other MCP clients spawning the binary). Interactive shells continue to see the help output. This lets `claude mcp add taskdir -- npx -y taskdir` register the server without needing an explicit `mcp` argument.
+- Running `taskdir` with no subcommand now enters MCP stdio mode when stdin is not a TTY (Claude Code and other MCP clients spawning the binary). Interactive shells continue to see the help output. This lets `claude mcp add taskdir -- npx -y @anish98821/taskdir` register the server without needing an explicit `mcp` argument.
 
 ## 0.4.0 — 2026-07-04
 

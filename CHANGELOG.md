@@ -2,6 +2,22 @@
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [SemVer](https://semver.org/).
 
+## 0.5.0 — 2026-07-05
+
+### Added
+
+- `taskdir init` now prompts for a **project name** (defaults to the folder name) and stores it as `name` in `.taskdir/config.toml` — surfaced in the web UI sidebar.
+- `taskdir init` now installs cross-agent **skill files** (Anthropic's `SKILL.md` format) so any AI coding agent working in the project loads the taskdir contract on session start. Interactive multi-select, both on by default:
+  - `.claude/skills/taskdir/SKILL.md` — Claude Code
+  - `.agents/skills/taskdir/SKILL.md` — Codex, Gemini CLI, Cursor (interop path)
+- `taskdir init` now registers taskdir as an **MCP server**, project-scoped, in the project's local config (`.mcp.json` for Claude Code, `.cursor/mcp.json` for Cursor). Merges into existing config without clobbering other servers.
+- `taskdir mcp` now writes a one-line `listening on stdio` banner to **stderr** at startup so humans running it manually can tell it's alive. Invisible to MCP clients (they parse stdout only).
+- ASCII-art banner at the top of `taskdir init` in TTY sessions.
+
+### Flags
+
+- `taskdir init --name <name>`, `--skills claude,codex|none`, `--mcp claude,cursor|none` for scripting.
+
 ## 0.4.3 — 2026-07-04
 
 ### Added

@@ -190,10 +190,25 @@ describe("handleRpc", () => {
     assert.equal(
       textContent((await callTool("update_status", {
         id: "0001",
-        status: "blocked",
+        status: "in_progress",
       })).result),
       "ok",
     );
+
+    // Statuses outside .taskdir/statuses.toml (defaults here) are rejected.
+    const badStatus = failure(await handleRpc({
+      jsonrpc: "2.0",
+      id: "bad-status",
+      method: "tools/call",
+      params: {
+        name: "update_status",
+        arguments: { id: "0001", status: "on_hold" },
+      },
+    }));
+    assert.deepEqual(badStatus.error, {
+      code: -32000,
+      message: "invalid status: on_hold",
+    });
 
     const meta = JSON.parse(textContent((await callTool("update_meta", {
       id: "0001",
@@ -232,7 +247,7 @@ describe("handleRpc", () => {
     );
 
     const listed = JSON.parse(textContent((await callTool("list_tasks", {
-      status: "blocked",
+      status: "in_progress",
       priority: "high",
       tag: "metadata",
     })).result)) as Array<{
@@ -241,7 +256,7 @@ describe("handleRpc", () => {
     }>;
 
     assert.equal(listed.length, 1);
-    assert.equal(listed[0].status, "blocked");
+    assert.equal(listed[0].status, "in_progress");
     assert.equal(listed[0].meta.title, "Updated");
     assert.equal(listed[0].meta.mode, "plan_only");
   });

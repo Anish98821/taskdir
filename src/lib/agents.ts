@@ -8,6 +8,7 @@ import {
   type AgentsConfig,
   type Provider,
 } from "./agent-types.ts";
+import { fireHooks } from "./hooks.ts";
 import { projectRoot } from "./project-root.ts";
 
 export {
@@ -216,12 +217,21 @@ export async function writeAgentsConfig(
 export async function upsertAgent(agent: Agent): Promise<AgentsConfig> {
   const current = await readAgentsConfig();
   const without = current.agents.filter((a) => a.id !== agent.id);
-  return writeAgentsConfig({ agents: [...without, agent] });
+  const result = await writeAgentsConfig({ agents: [...without, agent] });
+  void fireHooks("agent.registered", {
+    id: agent.id,
+    name: agent.name,
+    provider: agent.provider,
+  });
+  return result;
 }
 
 export async function removeAgent(id: string): Promise<AgentsConfig> {
   const current = await readAgentsConfig();
-  return writeAgentsConfig({
+  const existed = current.agents.some((a) => a.id === id);
+  const result = await writeAgentsConfig({
     agents: current.agents.filter((a) => a.id !== id),
   });
+  if (existed) void fireHooks("agent.unregistered", { id });
+  return result;
 }

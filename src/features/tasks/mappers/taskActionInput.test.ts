@@ -57,7 +57,7 @@ describe("parseCreateTaskForm", () => {
       parseCreateTaskForm(form({
         title: "Fallbacks",
         priority: "urgent",
-        mode: "later",
+        mode: "Not A Mode",
       })),
       {
         title: "Fallbacks",

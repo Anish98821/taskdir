@@ -2,12 +2,22 @@
 
 You're an AI coding agent working in a project that uses **taskdir** to track work. Taskdir is a local-first task tracker that stores tasks as folders of markdown on disk and exposes them over MCP. Follow this skill every time you connect.
 
-## 1. Self-register on first connect
+## 1. Reuse or register an agent on first connect
 
-Before doing any work, register yourself in the project's agent registry. This makes the user aware of you and lets task routing target you.
+Before doing any work, make sure you're represented in the project's agent registry. This makes the user aware of you and lets task routing target you. **Prefer reusing an existing agent over registering a new one.**
+
+First, list who's already registered:
 
 ```jsonc
 // MCP tool call
+{ "name": "list_agents", "arguments": {} }
+```
+
+- If a **generic agent of your provider/model already exists** (e.g. a `Claude Code` entry when you're Claude Code), just adopt it — use its `id` for task routing and skip registration. Don't create a near-duplicate.
+- Only `register_agent` when there's no suitable match, **or** the user explicitly wants a distinct identity for this session (a named persona, a second parallel worker, etc.).
+
+```jsonc
+// MCP tool call — only when no reusable agent exists
 {
   "name": "register_agent",
   "arguments": {
@@ -18,10 +28,10 @@ Before doing any work, register yourself in the project's agent registry. This m
 ```
 
 Rules:
-- Call this exactly once per session, before reading tasks.
+- Use a **stable, generic display name** for your provider/model class (e.g. "Claude Code") so registration is idempotent and naturally reuses one record across sessions.
 - The `id` is auto-generated from `name`. You can pass an explicit `id` to update an existing record (idempotent).
 - If your provider isn't in the enum, use `custom`.
-- Do **not** delete other agents the user has registered.
+- Do **not** delete other agents the user has registered. Use `unregister_agent` only to remove your own, or when the user asks you to clean up.
 
 ## 2. Only pick up tasks meant for you
 
@@ -47,13 +57,18 @@ Use the parent's status as a coordinator:
 
 ## 4. Status discipline
 
-The status set is fixed and small:
+The status set is project-defined in `.taskdir/statuses.toml`. The common core:
 
 ```
 pending  in_progress  awaiting_approval  blocked  done
 ```
 
+`update_status` rejects ids that aren't configured — stick to statuses the
+project actually defines.
+
 When you start a task, immediately set its status to `in_progress` via `update_status`. Don't read code or do anything else first.
+
+**Modes are project-defined.** Call `list_modes` to see them (id, label). A task's mode is stored in `meta.toml`. If the mode has a **strategy**, `get_task` appends it under `## strategy for mode: <id>` — treat that as instructions for how to approach this class of task and follow it.
 
 When you finish, set status to `done`. The "finish line" is:
 - For `mode = plan_and_execute` or `fast_execute`: code changes shipped and verified.
@@ -99,7 +114,7 @@ Don't paste large code blocks. Don't recap the conversation. Don't write marketi
 tasks/
   <NNNN>-<slug>/
     meta.toml        # title, priority, mode, tags, generate_report, agent
-    status           # one of the five values, single line
+    status           # a configured status id, single line
     context.md       # optional, written at creation time
     plan.md          # optional, your plan for plan-modes
     clarification.md # optional, questions for the user
@@ -127,7 +142,10 @@ append_to_file(id, filename, content)
 create_file(id, filename)
 rename_file(id, old, new)
 delete_file(id, filename)
+list_modes()
+list_agents()
 register_agent({name, provider, id?})
+unregister_agent(id)
 ```
 
 That's the whole protocol. If you find yourself reaching for filesystem access to do what one of these would do, use the MCP call instead — it keeps the watcher and the UI in sync.

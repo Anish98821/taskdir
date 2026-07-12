@@ -4,34 +4,29 @@ import { useTransition } from "react";
 import { ChevronDown } from "lucide-react";
 import { setStatus } from "@/app/actions";
 import { PickerDropdown } from "@/components/ui/picker-dropdown";
+import { CHIP } from "@/features/tasks/components/chip";
 import { InProgressDots } from "@/features/tasks/components/InProgressDots";
-import { STATUSES, type Status } from "@/lib/task-types";
+import {
+  statusChipTone,
+  statusLabel,
+} from "@/features/tasks/components/statusDisplay";
+import type { StatusDef } from "@/lib/statuses-types";
+import type { Status } from "@/lib/task-types";
 import { cn } from "@/lib/utils";
-
-const STATUS_LABEL: Record<Status, string> = {
-  pending: "pending",
-  in_progress: "in progress",
-  awaiting_approval: "awaiting approval",
-  blocked: "blocked",
-  done: "done",
-};
-
-const STATUS_TONE: Record<Status, string> = {
-  blocked: "text-amber-400 border-amber-400/40 hover:border-amber-400",
-  awaiting_approval:
-    "text-violet-400 border-violet-400/40 hover:border-violet-400",
-  in_progress: "text-sky-400 border-sky-400/40 hover:border-sky-400",
-  pending: "text-muted-foreground border-border hover:border-foreground",
-  done: "text-emerald-500 border-emerald-500/40 hover:border-emerald-500",
-};
 
 interface Props {
   taskId: string;
   status: Status;
+  statuses: StatusDef[];
 }
 
-export function StatusDropdown({ taskId, status }: Props) {
+export function StatusDropdown({ taskId, status, statuses }: Props) {
   const [pending, startTransition] = useTransition();
+
+  // Include the task's current status even if it's no longer configured, so
+  // the picker can always represent what's on disk.
+  const ids = statuses.map((s) => s.id);
+  const options = ids.includes(status) ? ids : [status, ...ids];
 
   const choose = (next: Status) => {
     if (pending) return;
@@ -43,18 +38,18 @@ export function StatusDropdown({ taskId, status }: Props) {
   return (
     <PickerDropdown
       value={status}
-      options={STATUSES}
+      options={options}
       onChange={choose}
       disabled={pending}
       triggerAriaLabel="change status"
       triggerClassName={cn(
-        "inline-flex items-center gap-1 border px-1.5 py-0.5 font-mono text-xs leading-none transition-colors",
-        STATUS_TONE[status],
+        CHIP,
+        statusChipTone(statuses, status),
         pending && "cursor-wait opacity-70",
       )}
       renderTrigger={(s) => (
         <>
-          {STATUS_LABEL[s]}
+          {statusLabel(statuses, s)}
           {pending ? (
             <InProgressDots />
           ) : (
@@ -65,7 +60,7 @@ export function StatusDropdown({ taskId, status }: Props) {
       )}
       renderOption={(s, selected) => (
         <span className={cn(selected ? "text-foreground" : undefined)}>
-          {STATUS_LABEL[s]}
+          {statusLabel(statuses, s)}
         </span>
       )}
     />

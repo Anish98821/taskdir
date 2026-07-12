@@ -1,6 +1,7 @@
 import {
   generateAgentId,
   readAgentsConfig,
+  removeAgent,
   upsertAgent,
   PROVIDERS,
   type Agent,
@@ -13,7 +14,6 @@ import {
   deleteFile,
   getTask,
   listTasks,
-  MODES,
   PRIORITIES,
   renameFile,
   STATUSES,
@@ -23,6 +23,7 @@ import {
   type Priority,
   type Status,
 } from "../tasks-core.ts";
+import { readModesConfig, readStrategy } from "../modes.ts";
 
 function text(s: string) {
   return { content: [{ type: "text", text: s }] };
@@ -43,7 +44,10 @@ export const TOOLS = [
     inputSchema: {
       type: "object",
       properties: {
-        status: { type: "string", enum: STATUSES },
+        status: {
+          type: "string",
+          description: `a status id from .taskdir/statuses.toml (defaults: ${STATUSES.join(", ")})`,
+        },
         tag: { type: "string" },
         priority: { type: "string", enum: PRIORITIES },
       },
@@ -52,7 +56,7 @@ export const TOOLS = [
   },
   {
     name: "get_task",
-    description: "Return all markdown files for a task, concatenated.",
+    description: "Return all markdown files for a task, concatenated. If the task's mode has a strategy defined, it is appended — follow it when working the task.",
     inputSchema: {
       type: "object",
       properties: { id: { type: "string" } },
@@ -69,7 +73,7 @@ export const TOOLS = [
         title: { type: "string" },
         context: { type: "string" },
         priority: { type: "string", enum: PRIORITIES },
-        mode: { type: "string", enum: MODES },
+        mode: { type: "string", description: "project-defined mode id (see list_modes)" },
         tags: { type: "array", items: { type: "string" } },
         generate_report: { type: "boolean" },
         agent: { type: "string" },
@@ -80,12 +84,12 @@ export const TOOLS = [
   },
   {
     name: "update_status",
-    description: "Set a task's status. One of: pending, in_progress, blocked, done.",
+    description: `Set a task's status to an id configured in .taskdir/statuses.toml (defaults: ${STATUSES.join(", ")}).`,
     inputSchema: {
       type: "object",
       properties: {
         id: { type: "string" },
-        status: { type: "string", enum: STATUSES },
+        status: { type: "string" },
       },
       required: ["id", "status"],
       additionalProperties: false,
@@ -100,7 +104,7 @@ export const TOOLS = [
         id: { type: "string" },
         title: { type: "string" },
         priority: { type: "string", enum: PRIORITIES },
-        mode: { type: "string", enum: MODES },
+        mode: { type: "string", description: "project-defined mode id (see list_modes)" },
         tags: { type: "array", items: { type: "string" } },
         generate_report: { type: "boolean" },
         agent: { type: "string" },
@@ -164,8 +168,26 @@ export const TOOLS = [
     },
   },
   {
+    name: "list_modes",
+    description: "List the project's task modes (id, label, icon). Modes are user-defined; use a mode's id when creating or updating a task. Each mode may have a strategy that get_task surfaces.",
+    inputSchema: {
+      type: "object",
+      properties: {},
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "list_agents",
+    description: "List agents already registered in the project (id, name, provider). Call this before register_agent so you can reuse an existing generic agent of your provider instead of creating a duplicate.",
+    inputSchema: {
+      type: "object",
+      properties: {},
+      additionalProperties: false,
+    },
+  },
+  {
     name: "register_agent",
-    description: "Register an agent in the project registry. Provide a human-friendly name and a provider (anthropic, openai, google, meta, mistral, xai, cohere, deepseek, custom). The provider drives the icon. id is auto-generated from the name if omitted; if provided, the existing record is updated (idempotent upsert by id).",
+    description: "Register an agent in the project registry. Provide a human-friendly name and a provider (anthropic, openai, google, meta, mistral, xai, cohere, deepseek, custom). The provider drives the icon. id is auto-generated from the name if omitted; if provided, the existing record is updated (idempotent upsert by id). Before calling this, use list_agents and reuse an existing generic same-provider agent rather than registering a new one, unless the user wants a distinct identity.",
     inputSchema: {
       type: "object",
       properties: {
@@ -177,10 +199,28 @@ export const TOOLS = [
       additionalProperties: false,
     },
   },
+  {
+    name: "unregister_agent",
+    description: "Remove an agent from the project registry by id. Only remove your own agent unless the user explicitly asks you to clean up another. Returns the remaining agents.",
+    inputSchema: {
+      type: "object",
+      properties: { id: { type: "string" } },
+      required: ["id"],
+      additionalProperties: false,
+    },
+  },
 ] as const;
 
 export async function callTool(name: string, args: Record<string, unknown>) {
   switch (name) {
+    case "list_modes": {
+      const config = await readModesConfig();
+      return text(JSON.stringify(config, null, 2));
+    }
+    case "list_agents": {
+      const config = await readAgentsConfig();
+      return text(JSON.stringify(config, null, 2));
+    }
     case "list_tasks": {
       const tasks = await listTasks({
         status: str(args.status) as Status | undefined,
@@ -198,8 +238,12 @@ export async function callTool(name: string, args: Record<string, unknown>) {
         .map((f) => `## ${f.name}\n\n${f.content}`)
         .join("\n\n");
       const route = task.meta.agent ? `agent: ${task.meta.agent}` : "";
-      const header = `# ${task.meta.title}\n\nid: ${task.id}\nstatus: ${task.status}\npriority: ${task.meta.priority}\ntags: ${task.meta.tags.join(", ")}${route ? `\n${route}` : ""}\n\n`;
-      return text(header + concat);
+      const header = `# ${task.meta.title}\n\nid: ${task.id}\nstatus: ${task.status}\npriority: ${task.meta.priority}\nmode: ${task.meta.mode}\ntags: ${task.meta.tags.join(", ")}${route ? `\n${route}` : ""}\n\n`;
+      const strategy = (await readStrategy(task.meta.mode)).trim();
+      const strategyBlock = strategy
+        ? `\n\n---\n\n## strategy for mode: ${task.meta.mode}\n\n${strategy}\n`
+        : "";
+      return text(header + concat + strategyBlock);
     }
     case "create_task": {
       const title = str(args.title);
@@ -299,6 +343,16 @@ export async function callTool(name: string, args: Record<string, unknown>) {
       }
       const agent: Agent = { id, name, provider };
       const result = await upsertAgent(agent);
+      return text(JSON.stringify(result, null, 2));
+    }
+    case "unregister_agent": {
+      const id = str(args.id)?.trim();
+      if (!id) throw new Error("id required");
+      const before = await readAgentsConfig();
+      if (!before.agents.some((a) => a.id === id)) {
+        throw new Error(`agent not found: ${id}`);
+      }
+      const result = await removeAgent(id);
       return text(JSON.stringify(result, null, 2));
     }
     default:

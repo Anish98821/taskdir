@@ -8,35 +8,20 @@ import { createTaskAction } from "@/app/actions";
 import { InProgressDots } from "@/features/tasks/components/InProgressDots";
 import { PriorityBadge } from "@/features/tasks/components/PriorityBadge";
 import { getTaskSort } from "@/features/tasks/components/SortDropdown";
+import {
+  statusLabel,
+  statusRank,
+  statusTextTone,
+} from "@/features/tasks/components/statusDisplay";
+import type { StatusDef } from "@/lib/statuses-types";
 import { cn } from "@/lib/utils";
-import type { Status, TaskSummary } from "@/lib/task-types";
+import type { TaskSummary } from "@/lib/task-types";
 
-const STATUS_RANK: Record<Status, number> = {
-  blocked: 0,
-  awaiting_approval: 1,
-  in_progress: 2,
-  pending: 3,
-  done: 4,
-};
 const PRIORITY_RANK = { high: 0, med: 1, low: 2 } as const;
-
-const STATUS_LABEL: Record<Status, string> = {
-  blocked: "blocked",
-  awaiting_approval: "awaiting approval",
-  in_progress: "in progress",
-  pending: "pending",
-  done: "done",
-};
-const STATUS_COLOR: Record<Status, string> = {
-  blocked: "text-amber-400",
-  awaiting_approval: "text-violet-400",
-  in_progress: "text-sky-400",
-  pending: "text-muted-foreground",
-  done: "text-emerald-500",
-};
 
 interface Props {
   tasks: TaskSummary[];
+  statuses: StatusDef[];
 }
 
 interface PendingTask {
@@ -44,7 +29,7 @@ interface PendingTask {
   title: string;
 }
 
-export function TaskList({ tasks }: Props) {
+export function TaskList({ tasks, statuses }: Props) {
   const params = useSearchParams();
   const q = (params.get("q") ?? "").toLowerCase().trim();
   const selectedId = params.get("task");
@@ -80,10 +65,10 @@ export function TaskList({ tasks }: Props) {
         PRIORITY_RANK[a.meta.priority] - PRIORITY_RANK[b.meta.priority];
       if (sort === "priority") return p || latest;
 
-      const s = STATUS_RANK[a.status] - STATUS_RANK[b.status];
+      const s = statusRank(statuses, a.status) - statusRank(statuses, b.status);
       return s || p || latest;
     });
-  }, [tasks, q, sort]);
+  }, [tasks, q, sort, statuses]);
 
   const buildHref = (id: string) => {
     const sp = new URLSearchParams(params.toString());
@@ -137,7 +122,7 @@ export function TaskList({ tasks }: Props) {
               href={buildHref(t.id)}
               scroll={false}
               className={cn(
-                "grid grid-cols-[4rem_8rem_auto_1fr_auto] items-center gap-4 px-4 py-2 hover:bg-muted/40 focus:bg-muted/60 focus:outline-none",
+                "flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2 hover:bg-muted/40 focus:bg-muted/60 focus:outline-none sm:grid sm:grid-cols-[4rem_8rem_auto_1fr_auto] sm:gap-4",
                 isActive && "bg-muted/60",
               )}
             >
@@ -145,14 +130,14 @@ export function TaskList({ tasks }: Props) {
               <span
                 className={cn(
                   "inline-flex items-center gap-1.5",
-                  STATUS_COLOR[t.status],
+                  statusTextTone(statuses, t.status),
                 )}
               >
-                {STATUS_LABEL[t.status]}
+                {statusLabel(statuses, t.status)}
                 {t.status === "in_progress" && <InProgressDots />}
               </span>
               <PriorityBadge priority={t.meta.priority} className="w-fit justify-self-start" />
-              <span className="flex min-w-0 items-center gap-2 truncate text-foreground">
+              <span className="flex w-full min-w-0 items-center gap-2 truncate text-foreground sm:w-auto">
                 {t.hasReport && (
                   <span
                     title="unread report"
@@ -163,7 +148,7 @@ export function TaskList({ tasks }: Props) {
                 )}
                 <span className="truncate">{t.meta.title}</span>
               </span>
-              <span className="truncate text-xs text-muted-foreground">
+              <span className="hidden truncate text-xs text-muted-foreground sm:inline">
                 {t.meta.tags.join(" ")}
               </span>
             </Link>
@@ -177,15 +162,17 @@ export function TaskList({ tasks }: Props) {
 function PendingTaskRow({ title }: { title: string }) {
   return (
     <li>
-      <div className="grid grid-cols-[4rem_8rem_auto_1fr_auto] items-center gap-4 px-4 py-2 opacity-70">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2 opacity-70 sm:grid sm:grid-cols-[4rem_8rem_auto_1fr_auto] sm:gap-4">
         <span className="text-muted-foreground">new</span>
         <span className="inline-flex items-center gap-1.5 text-sky-400">
           creating
           <InProgressDots />
         </span>
         <PriorityBadge priority="med" className="w-fit justify-self-start" />
-        <span className="min-w-0 truncate text-foreground">{title}</span>
-        <span />
+        <span className="w-full min-w-0 truncate text-foreground sm:w-auto">
+          {title}
+        </span>
+        <span className="hidden sm:inline" />
       </div>
     </li>
   );

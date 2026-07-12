@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { X } from "lucide-react";
 import { answerClarification } from "@/app/actions";
+import { Textarea } from "@/components/ui/textarea";
 import { ApprovePlanBanner } from "@/features/tasks/components/ApprovePlanBanner";
 import { ClarificationSubmitButton } from "@/features/tasks/components/ClarificationSubmitButton";
 import { DeleteTaskButton } from "@/features/tasks/components/DeleteTaskButton";
@@ -10,6 +11,8 @@ import { FileTabs } from "@/features/tasks/components/FileTabs";
 import { MetaEditor } from "@/features/tasks/components/MetaEditor";
 import { StatusDropdown } from "@/features/tasks/components/StatusDropdown";
 import type { AgentsConfig } from "@/lib/agents";
+import type { ModeDef } from "@/lib/modes-types";
+import type { StatusDef } from "@/lib/statuses-types";
 import { type Task } from "@/lib/tasks";
 
 interface Props {
@@ -17,6 +20,8 @@ interface Props {
   baseParams: URLSearchParams;
   selectedFile: string;
   agentsConfig: AgentsConfig;
+  modes: ModeDef[];
+  statuses: StatusDef[];
 }
 
 export function TaskDetail({
@@ -24,6 +29,8 @@ export function TaskDetail({
   baseParams,
   selectedFile,
   agentsConfig,
+  modes,
+  statuses,
 }: Props) {
   const answerBound = answerClarification.bind(null, task.id);
 
@@ -44,7 +51,11 @@ export function TaskDetail({
         <div className="mb-2 flex items-start justify-between gap-3">
           <div className="flex flex-1 flex-wrap items-center gap-2 text-xs text-muted-foreground">
             <span>{task.id}</span>
-            <StatusDropdown taskId={task.id} status={task.status} />
+            <StatusDropdown
+              taskId={task.id}
+              status={task.status}
+              statuses={statuses}
+            />
           </div>
           <div className="flex items-center gap-2">
             {task.hasReport && <MarkReportReadButton taskId={task.id} />}
@@ -62,6 +73,7 @@ export function TaskDetail({
           taskId={task.id}
           meta={task.meta}
           agentsConfig={agentsConfig}
+          modes={modes}
         />
       </header>
 
@@ -73,11 +85,11 @@ export function TaskDetail({
         <section className="border-b border-border bg-amber-400/5 px-4 py-3">
           <p className="mb-2 text-xs text-amber-400">answer the question</p>
           <form action={answerBound} className="flex flex-col gap-2">
-            <textarea
+            <Textarea
               name="answer"
               required
               rows={3}
-              className="w-full resize-y border border-border bg-background p-2 font-mono text-sm focus:border-foreground focus:outline-none"
+              className="resize-y font-mono"
               placeholder="your answer…"
             />
             <ClarificationSubmitButton />

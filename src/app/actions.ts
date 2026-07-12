@@ -15,6 +15,19 @@ import {
   type ProjectConfig,
 } from "@/lib/project-config";
 import {
+  writeHooksConfig as writeHooksConfigStore,
+  type HooksConfig,
+} from "@/lib/hooks";
+import {
+  writeModesConfig as writeModesConfigStore,
+  writeStrategy as writeStrategyStore,
+  type ModesConfig,
+} from "@/lib/modes";
+import {
+  writeStatusesConfig as writeStatusesConfigStore,
+  type StatusesConfig,
+} from "@/lib/statuses";
+import {
   appendToFile,
   createFile,
   createTask,
@@ -124,4 +137,36 @@ export async function saveProjectConfig(
   const saved = await writeProjectConfigStore(patch);
   refresh();
   return saved;
+}
+
+export async function saveHooksConfig(
+  config: HooksConfig,
+): Promise<HooksConfig> {
+  const saved = await writeHooksConfigStore(config);
+  refresh();
+  return saved;
+}
+
+export async function saveModesConfig(
+  config: ModesConfig,
+): Promise<ModesConfig> {
+  const saved = await writeModesConfigStore(config);
+  refresh();
+  return saved;
+}
+
+export async function saveStatusesConfig(
+  config: StatusesConfig,
+): Promise<StatusesConfig> {
+  const saved = await writeStatusesConfigStore(config);
+  refresh();
+  return saved;
+}
+
+export async function saveStrategy(
+  modeId: string,
+  content: string,
+): Promise<void> {
+  await writeStrategyStore(modeId, content);
+  refresh();
 }

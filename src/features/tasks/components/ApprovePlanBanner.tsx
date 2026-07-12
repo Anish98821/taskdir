@@ -34,7 +34,7 @@ export function ApprovePlanBanner({ taskId }: Props) {
           type="button"
           onClick={reject}
           disabled={pending}
-          className="inline-flex items-center gap-1 border border-border px-2 py-1 text-muted-foreground hover:border-foreground hover:text-foreground disabled:opacity-60"
+          className="inline-flex items-center gap-1 rounded-md border border-border bg-muted/30 px-2 py-1 text-muted-foreground transition-colors hover:border-muted-foreground/50 hover:text-foreground disabled:opacity-60"
         >
           <X className="size-3" aria-hidden />
           request changes
@@ -43,7 +43,7 @@ export function ApprovePlanBanner({ taskId }: Props) {
           type="button"
           onClick={approve}
           disabled={pending}
-          className="inline-flex items-center gap-1 border border-violet-400/40 bg-violet-400/10 px-2 py-1 text-violet-400 hover:border-violet-400 disabled:opacity-60"
+          className="inline-flex items-center gap-1 rounded-md border border-violet-400/30 bg-violet-400/10 px-2 py-1 text-violet-400 transition-colors hover:border-violet-400/60 disabled:opacity-60"
         >
           {pending ? (
             <>

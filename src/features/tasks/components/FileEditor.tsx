@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { InProgressDots } from "@/features/tasks/components/InProgressDots";
 import { MarkdownEditor } from "@/features/tasks/components/MarkdownEditor";
 import { MarkdownPreview } from "@/features/tasks/components/MarkdownPreview";
+import { usePersistentState } from "@/hooks/use-persistent-state";
 import { cn } from "@/lib/utils";
 
 interface Props {
@@ -26,7 +27,10 @@ export function FileEditor({ taskId, filename, initialContent, initialMtimeMs }:
   const [saved, setSaved] = useState(initialContent);
   const [baselineMtime, setBaselineMtime] = useState(initialMtimeMs);
   const [conflict, setConflict] = useState<Conflict | null>(null);
-  const [mode, setMode] = useState<"edit" | "preview">("edit");
+  const [mode, setMode] = usePersistentState<"edit" | "preview">(
+    "fileEditor.mode",
+    "edit",
+  );
   const [pending, startTransition] = useTransition();
 
   const dirty = value !== saved;
@@ -94,8 +98,8 @@ export function FileEditor({ taskId, filename, initialContent, initialMtimeMs }:
               setMode((m) => (m === "edit" ? "preview" : "edit"))
             }
             className={cn(
-              "inline-flex h-6 items-center gap-1 px-2 text-xs",
-              "border border-transparent text-muted-foreground hover:text-foreground hover:border-border",
+              "inline-flex h-6 items-center gap-1 rounded-md px-2 text-xs transition-colors",
+              "border border-transparent text-muted-foreground hover:border-border hover:bg-muted/30 hover:text-foreground",
             )}
             title="toggle preview (⌘P)"
           >
@@ -134,7 +138,7 @@ export function FileEditor({ taskId, filename, initialContent, initialMtimeMs }:
               type="button"
               onClick={handleReload}
               disabled={pending}
-              className="border border-amber-400/40 px-2 py-0.5 hover:bg-amber-400/10"
+              className="rounded-md border border-amber-400/30 px-2 py-0.5 transition-colors hover:border-amber-400/60 hover:bg-amber-400/10"
             >
               reload
             </button>
@@ -142,7 +146,7 @@ export function FileEditor({ taskId, filename, initialContent, initialMtimeMs }:
               type="button"
               onClick={handleOverwrite}
               disabled={pending}
-              className="border border-amber-400/40 px-2 py-0.5 hover:bg-amber-400/10"
+              className="rounded-md border border-amber-400/30 px-2 py-0.5 transition-colors hover:border-amber-400/60 hover:bg-amber-400/10"
             >
               overwrite
             </button>

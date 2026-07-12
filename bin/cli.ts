@@ -181,12 +181,22 @@ description: Use whenever coordinating work in a project that has a .taskdir/ fo
 
 You're an AI coding agent working in **${displayName}**, a project that uses **taskdir** to track work. Taskdir is a local-first task tracker that stores tasks as folders of markdown on disk and exposes them over MCP. Follow this skill every time you connect.
 
-## 1. Self-register on first connect
+## 1. Reuse or register an agent on first connect
 
-Before doing any work, register yourself in the project's agent registry. This makes the user aware of you and lets task routing target you.
+Before doing any work, make sure you're represented in the project's agent registry. This makes the user aware of you and lets task routing target you. **Prefer reusing an existing agent over registering a new one.**
+
+First, list who's already registered:
 
 \`\`\`jsonc
 // MCP tool call
+{ "name": "list_agents", "arguments": {} }
+\`\`\`
+
+- If a **generic agent of your provider/model already exists** (e.g. a \`Claude Code\` entry when you're Claude Code), just adopt it — use its \`id\` for task routing and skip registration. Don't create a near-duplicate.
+- Only \`register_agent\` when there's no suitable match, **or** the user explicitly wants a distinct identity for this session.
+
+\`\`\`jsonc
+// MCP tool call — only when no reusable agent exists
 {
   "name": "register_agent",
   "arguments": {
@@ -197,10 +207,10 @@ Before doing any work, register yourself in the project's agent registry. This m
 \`\`\`
 
 Rules:
-- Call this exactly once per session, before reading tasks.
+- Use a **stable, generic display name** for your provider/model class (e.g. "Claude Code") so registration is idempotent and reuses one record across sessions.
 - The \`id\` is auto-generated from \`name\`. You can pass an explicit \`id\` to update an existing record (idempotent).
 - If your provider isn't in the enum, use \`custom\`.
-- Do **not** delete other agents the user has registered.
+- Do **not** delete other agents the user has registered. Use \`unregister_agent\` only for your own, or when the user asks.
 
 ## 2. Only pick up tasks meant for you
 
@@ -225,6 +235,8 @@ Use the parent's status as a coordinator:
 ## 4. Status discipline
 
 Statuses: \`pending\`, \`in_progress\`, \`awaiting_approval\`, \`blocked\`, \`done\`.
+
+Modes are project-defined — call \`list_modes\` to see them. A task's mode is in \`meta.toml\`; if that mode has a **strategy**, \`get_task\` appends it under \`## strategy for mode: <id>\` — follow it as instructions for that class of task.
 
 Set \`in_progress\` immediately when you start. Finish line depends on \`mode\`:
 - \`plan_and_execute\` / \`fast_execute\`: code shipped and verified.
@@ -288,7 +300,10 @@ append_to_file(id, filename, content)
 create_file(id, filename)
 rename_file(id, old, new)
 delete_file(id, filename)
+list_modes()
+list_agents()
 register_agent({name, provider, id?})
+unregister_agent(id)
 \`\`\`
 `;
 }
@@ -525,6 +540,19 @@ export async function runInit(argv: string[]): Promise<void> {
   configLines.push(`tasks_dir = "${tomlEscape(tasksDirForConfig)}"`);
   configLines.push("");
   await fs.writeFile(configPath, configLines.join("\n"), "utf8");
+
+  const statusesPath = path.join(dotTaskdir, "statuses.toml");
+  if (!(await pathExists(statusesPath))) {
+    const statusBlocks = [
+      ["pending", "pending", "neutral"],
+      ["in_progress", "in progress", "sky"],
+      ["done", "done", "emerald"],
+    ].map(
+      ([id, label, color]) =>
+        `[[status]]\nid = "${id}"\nlabel = "${label}"\ncolor = "${color}"`,
+    );
+    await fs.writeFile(statusesPath, statusBlocks.join("\n\n") + "\n", "utf8");
+  }
 
   const readmePath = path.join(dotTaskdir, "README.md");
   if (!(await pathExists(readmePath))) {

@@ -2,6 +2,28 @@
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [SemVer](https://semver.org/).
 
+## 0.6.0 — 2026-07-12
+
+### Added
+
+- **Configurable modes with strategies.** Modes live in `.taskdir/modes.toml` — rename the built-ins, change icons, or add your own. Each mode can carry a **strategy** (markdown at `.taskdir/strategies/<id>.md`) that `get_task` appends for agents, so per-class guidance travels with the work. New `list_modes` MCP tool.
+- **Hooks.** Run a shell command or POST a webhook on task events (`task.created`, `task.status_changed`, `task.updated`, `task.deleted`, `agent.registered`, `agent.unregistered`), configured in `.taskdir/hooks.toml`. Commands get the event JSON on stdin plus `TASKDIR_*` env vars; webhooks get a JSON body.
+- **Configurable statuses.** Statuses live in `.taskdir/statuses.toml` with a label and color each — relabel, recolor, remove, or add your own; the config is the single source of truth. `taskdir init` seeds `pending`/`in_progress`/`done`. `update_status` validates against the configured set; tasks whose on-disk status is no longer configured stay visible (rendered neutral). `awaiting_approval` and `blocked` keep their approval/clarification banners when configured.
+- **Settings redesign.** New shared section layout across five tabs (agents / modes / statuses / hooks / project): all add/edit flows are dialog-based, deletes go through confirm dialogs, changes persist per action (no bulk "save changes"), and empty states have a clear call to action. File add/rename in the task pane are dialogs too.
+- **Resizable detail pane.** Drag the left edge of the task detail / new-task pane; width persists, double-click resets, arrow keys work on the focused handle.
+- **Responsive tasks page.** On small screens the task detail opens as a full-screen overlay (it was previously hidden entirely), list rows wrap to two lines, the search bar flexes, and sort/filter collapse to icons.
+
+### Changed
+
+- Tasks page restyled to match the design system: rounded chips with tinted backgrounds for status/priority/mode/tags, design-system toolbar buttons. `med` priority is deliberately neutral so `high`/`low` stand out.
+- Sidebar collapsed state now persists across the tasks and settings pages.
+- UI copy trimmed throughout.
+- New app icon.
+
+### Removed
+
+- The report toggle in the new-task draft. `generate_report` still defaults to `true`; set it in `meta.toml` if you need to opt out.
+
 ## 0.5.0 — 2026-07-05
 
 ### Added

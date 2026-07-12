@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist_Mono } from "next/font/google";
 import { LiveRefresh } from "@/components/layout/LiveRefresh";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { readProjectConfig } from "@/lib/project-config";
 import "./globals.css";
 
 const geistMono = Geist_Mono({
@@ -9,10 +10,14 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-export const metadata: Metadata = {
-  title: "taskdir",
-  description: "Local task substrate for AI agents.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const project = await readProjectConfig();
+  const name = project.name.trim();
+  return {
+    title: name ? `${name} · taskdir` : "taskdir",
+    description: "Local task substrate for AI agents.",
+  };
+}
 
 export default function RootLayout({
   children,

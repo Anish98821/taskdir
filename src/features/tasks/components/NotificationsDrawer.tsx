@@ -38,9 +38,9 @@ const KIND_LABEL: Record<NotifKind, string> = {
 };
 
 const KIND_TONE: Record<NotifKind, string> = {
-  report: "text-emerald-500 border-emerald-500/40",
-  approval: "text-violet-400 border-violet-400/40",
-  blocked: "text-amber-400 border-amber-400/40",
+  report: "text-emerald-500 border-emerald-500/30 bg-emerald-500/10",
+  approval: "text-violet-400 border-violet-400/30 bg-violet-400/10",
+  blocked: "text-amber-400 border-amber-400/30 bg-amber-400/10",
 };
 
 const KIND_ICON: Record<NotifKind, LucideIcon> = {
@@ -136,7 +136,7 @@ export function NotificationsDrawer({ tasks }: Props) {
               type="button"
               onClick={markAll}
               disabled={marking}
-              className="inline-flex w-fit items-center gap-1 border border-border px-2 py-0.5 text-xs text-muted-foreground hover:border-foreground hover:text-foreground disabled:opacity-60"
+              className="inline-flex w-fit items-center gap-1 rounded-md border border-border bg-muted/30 px-2 py-0.5 text-xs text-muted-foreground transition-colors hover:border-muted-foreground/50 hover:text-foreground disabled:opacity-60"
             >
               {marking ? (
                 <>
@@ -174,7 +174,7 @@ export function NotificationsDrawer({ tasks }: Props) {
                       >
                         <span
                           className={cn(
-                            "inline-flex w-fit items-center gap-1 border px-1.5 py-0.5 text-[10px] leading-none",
+                            "inline-flex w-fit items-center gap-1 rounded-md border px-1.5 py-0.5 text-[10px] leading-none",
                             KIND_TONE[item.kind],
                           )}
                         >
@@ -197,7 +197,7 @@ export function NotificationsDrawer({ tasks }: Props) {
                           disabled={clearing}
                           aria-label={`clear unread report for task ${item.task.id}`}
                           title="clear"
-                          className="inline-flex h-6 shrink-0 items-center gap-1 border border-border px-1.5 text-[10px] text-muted-foreground hover:border-foreground hover:text-foreground disabled:opacity-60"
+                          className="inline-flex h-6 shrink-0 items-center gap-1 rounded-md border border-border px-1.5 text-[10px] text-muted-foreground transition-colors hover:border-muted-foreground/50 hover:bg-muted/30 hover:text-foreground disabled:opacity-60"
                         >
                           {isClearing ? (
                             <InProgressDots />

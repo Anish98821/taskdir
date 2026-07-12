@@ -5,32 +5,48 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { ChevronDown, Plus, X } from "lucide-react";
 import { createTaskAction } from "@/app/actions";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { PickerDropdown } from "@/components/ui/picker-dropdown";
+import { CHIP, CHIP_NEUTRAL, CHIP_STATIC_NEUTRAL } from "@/features/tasks/components/chip";
 import { InProgressDots } from "@/features/tasks/components/InProgressDots";
 import { MarkdownEditor } from "@/features/tasks/components/MarkdownEditor";
-import { MODE_ICON, MODE_LABEL } from "@/features/tasks/components/modeDisplay";
+import {
+  modeIconFor,
+  modeLabel,
+} from "@/features/tasks/components/modeDisplay";
 import {
   PRIORITY_ICON,
   PRIORITY_TONE,
 } from "@/features/tasks/components/PriorityBadge";
 import type { Agent, AgentsConfig } from "@/lib/agent-types";
 import { ProviderIcon } from "@/features/tasks/components/providerIcon";
-import { MODES, PRIORITIES, type Mode, type Priority } from "@/lib/task-types";
+import { usePersistentState } from "@/hooks/use-persistent-state";
+import { DEFAULT_MODE_ID, type ModeDef } from "@/lib/modes-types";
+import { PRIORITIES, type Mode, type Priority } from "@/lib/task-types";
 import { cn } from "@/lib/utils";
 
 interface Props {
   closeHref: string;
   agentsConfig: AgentsConfig;
+  modes: ModeDef[];
 }
 
-export function NewTaskDraft({ closeHref, agentsConfig }: Props) {
+export function NewTaskDraft({ closeHref, agentsConfig, modes }: Props) {
   const router = useRouter();
   const titleRef = useRef<HTMLTextAreaElement>(null);
   const [title, setTitle] = useState("");
-  const [priority, setPriority] = useState<Priority>("med");
-  const [mode, setMode] = useState<Mode>("plan_and_execute");
+  // These three default to the last values the user chose for a new task.
+  const [priority, setPriority] = usePersistentState<Priority>(
+    "newTask.priority",
+    "med",
+  );
+  const [mode, setMode] = usePersistentState<Mode>(
+    "newTask.mode",
+    DEFAULT_MODE_ID,
+  );
+  const modeIds = modes.map((m) => m.id);
+  const modeOptions = modeIds.includes(mode) ? modeIds : [mode, ...modeIds];
   const [tags, setTags] = useState<string[]>([]);
-  const [generateReport, setGenerateReport] = useState(true);
   const [agent, setAgent] = useState("");
   const [context, setContext] = useState("");
   const [pending, startTransition] = useTransition();
@@ -57,7 +73,6 @@ export function NewTaskDraft({ closeHref, agentsConfig }: Props) {
     fd.set("priority", priority);
     fd.set("mode", mode);
     fd.set("tags", tags.join(", "));
-    fd.set("generate_report", generateReport ? "true" : "false");
     fd.set("agent", agent);
     fd.set("context", context);
     startTransition(async () => {
@@ -81,9 +96,7 @@ export function NewTaskDraft({ closeHref, agentsConfig }: Props) {
         <div className="mb-2 flex items-start justify-between gap-3">
           <div className="flex flex-1 flex-wrap items-center gap-2 text-xs text-muted-foreground">
             <span>draft</span>
-            <span className="border border-border px-1.5 py-0.5 text-muted-foreground">
-              pending
-            </span>
+            <span className={cn(CHIP, CHIP_STATIC_NEUTRAL)}>pending</span>
           </div>
           <Link
             href={closeHref}
@@ -103,10 +116,7 @@ export function NewTaskDraft({ closeHref, agentsConfig }: Props) {
               onChange={setPriority}
               disabled={pending}
               triggerAriaLabel="change priority"
-              triggerClassName={cn(
-                "inline-flex items-center gap-1 border px-1.5 py-0.5 font-mono text-xs leading-none transition-colors hover:opacity-90",
-                PRIORITY_TONE[priority],
-              )}
+              triggerClassName={cn(CHIP, PRIORITY_TONE[priority], "hover:opacity-90")}
               renderTrigger={(p) => {
                 const Icon = PRIORITY_ICON[p];
                 return (
@@ -132,28 +142,28 @@ export function NewTaskDraft({ closeHref, agentsConfig }: Props) {
             <span>·</span>
             <PickerDropdown
               value={mode}
-              options={MODES}
+              options={modeOptions}
               onChange={setMode}
               disabled={pending}
               triggerAriaLabel="change mode"
-              triggerClassName="inline-flex items-center gap-1 border border-border px-1.5 py-0.5 leading-none hover:border-foreground hover:text-foreground"
+              triggerClassName={cn(CHIP, CHIP_NEUTRAL)}
               renderTrigger={(m) => {
-                const Icon = MODE_ICON[m];
+                const Icon = modeIconFor(modes, m);
                 return (
                   <>
                     <Icon className="size-3 opacity-80" aria-hidden />
-                    {MODE_LABEL[m]}
+                    {modeLabel(modes, m)}
                     <ChevronDown className="size-3" aria-hidden />
                   </>
                 );
               }}
               renderOption={(m, selected) => {
-                const Icon = MODE_ICON[m];
+                const Icon = modeIconFor(modes, m);
                 return (
                   <>
                     <Icon className="size-3 opacity-60" />
                     <span className={cn(selected ? "text-foreground" : undefined)}>
-                      {MODE_LABEL[m]}
+                      {modeLabel(modes, m)}
                     </span>
                   </>
                 );
@@ -161,16 +171,6 @@ export function NewTaskDraft({ closeHref, agentsConfig }: Props) {
             />
             <span>·</span>
             <TagChips tags={tags} onChange={setTags} disabled={pending} />
-            <label className="inline-flex items-center gap-1 border border-border px-1.5 py-0.5 leading-none text-muted-foreground hover:border-foreground hover:text-foreground">
-              <input
-                type="checkbox"
-                checked={generateReport}
-                onChange={(e) => setGenerateReport(e.currentTarget.checked)}
-                disabled={pending}
-                className="size-3 accent-foreground"
-              />
-              report
-            </label>
             <AgentPicker
               value={agent}
               agents={agentsConfig.agents}
@@ -190,7 +190,7 @@ export function NewTaskDraft({ closeHref, agentsConfig }: Props) {
             }}
             onKeyDown={onTitleKey}
             disabled={pending}
-            className="block w-full resize-none overflow-hidden border border-border bg-background px-1 py-0.5 font-mono text-base leading-snug text-foreground focus:border-foreground focus:outline-none disabled:opacity-60"
+            className="block w-full resize-none overflow-hidden rounded-md border border-input bg-background px-1.5 py-0.5 font-mono text-base leading-snug text-foreground focus:border-ring focus:outline-none disabled:opacity-60"
           />
         </div>
       </header>
@@ -211,32 +211,33 @@ export function NewTaskDraft({ closeHref, agentsConfig }: Props) {
           />
         </div>
         <div className="flex items-center justify-between gap-2 border-t border-border px-4 py-2 text-xs">
-          <span className="text-muted-foreground">
-            nothing is on disk yet — click save to create.
-          </span>
+          <span />
           <div className="flex items-center gap-2">
             <Link
               href={closeHref}
               scroll={false}
-              className="border border-border px-2 py-1 text-muted-foreground hover:text-foreground hover:border-foreground"
+              className={cn(
+                buttonVariants({ variant: "outline", size: "sm" }),
+                "font-mono text-xs font-normal text-muted-foreground hover:text-foreground",
+              )}
             >
               cancel
             </Link>
-            <button
-              type="button"
+            <Button
+              size="sm"
               onClick={save}
               disabled={!canSave}
-              className="inline-flex items-center gap-1.5 border border-border px-2 py-1 text-foreground hover:border-foreground disabled:cursor-not-allowed disabled:opacity-50"
+              className="font-mono text-xs"
             >
               {pending ? (
-                <>
+                <span className="inline-flex items-center gap-1.5">
                   saving
                   <InProgressDots />
-                </>
+                </span>
               ) : (
                 "save (⌘↵)"
               )}
-            </button>
+            </Button>
           </div>
         </div>
       </div>
@@ -278,7 +279,7 @@ function AgentPicker({
       onChange={(next) => onChange(next === ANY ? "" : next)}
       disabled={disabled}
       triggerAriaLabel="change agent"
-      triggerClassName="inline-flex items-center gap-1 border border-border px-1.5 py-0.5 leading-none text-muted-foreground hover:border-foreground hover:text-foreground"
+      triggerClassName={cn(CHIP, CHIP_NEUTRAL)}
       renderTrigger={(v) => (
         <>
           {renderIcon(v)}
@@ -325,7 +326,7 @@ function TagChips({
       {tags.map((t) => (
         <span
           key={t}
-          className="group inline-flex items-center gap-0.5 border border-border px-1.5 py-0.5"
+          className="group inline-flex items-center gap-1 rounded-md border border-border bg-muted/30 px-1.5 py-0.5 leading-none"
         >
           <span>{t}</span>
           <button
@@ -355,14 +356,14 @@ function TagChips({
           }}
           onBlur={commitAdd}
           placeholder="tag"
-          className="w-16 border border-border bg-background px-1 py-0.5 font-mono focus:border-foreground focus:outline-none"
+          className="w-16 rounded-md border border-input bg-background px-1.5 py-0.5 font-mono focus:border-ring focus:outline-none"
         />
       ) : (
         <button
           type="button"
           onClick={() => setAdding(true)}
           disabled={disabled}
-          className="inline-flex items-center gap-0.5 border border-transparent px-1 py-0.5 text-muted-foreground hover:border-border hover:text-foreground"
+          className="inline-flex items-center gap-0.5 rounded-md border border-transparent px-1 py-0.5 text-muted-foreground transition-colors hover:border-border hover:bg-muted/30 hover:text-foreground"
           aria-label="add tag"
         >
           <Plus className="size-3" />

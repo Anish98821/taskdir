@@ -41,7 +41,7 @@ describe("parseMetaToml", () => {
   });
 
   it("uses current defaults for missing or invalid values", () => {
-    assert.deepEqual(parseMetaToml('priority = "urgent"\nmode = "later"'), {
+    assert.deepEqual(parseMetaToml('priority = "urgent"\nmode = "Not A Mode"'), {
       title: "(untitled)",
       created_at: new Date(0).toISOString(),
       priority: "med",

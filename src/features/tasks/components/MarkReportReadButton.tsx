@@ -26,7 +26,7 @@ export function MarkReportReadButton({ taskId }: Props) {
       disabled={pending}
       aria-label="mark report as read"
       title="mark report as read"
-      className="inline-flex items-center gap-1 border border-emerald-500/40 px-1.5 py-0.5 text-xs leading-none text-emerald-500 hover:border-emerald-500 disabled:opacity-60"
+      className="inline-flex items-center gap-1 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-1.5 py-0.5 text-xs leading-none text-emerald-500 transition-colors hover:border-emerald-500/60 disabled:opacity-60"
     >
       {pending ? (
         <>

@@ -4,15 +4,19 @@ import { useEffect, useOptimistic, useRef, useState, useTransition } from "react
 import { ChevronDown, Plus, X } from "lucide-react";
 import { setMeta } from "@/app/actions";
 import { PickerDropdown } from "@/components/ui/picker-dropdown";
-import { MODE_ICON, MODE_LABEL } from "@/features/tasks/components/modeDisplay";
+import { CHIP, CHIP_NEUTRAL } from "@/features/tasks/components/chip";
+import {
+  modeIconFor,
+  modeLabel,
+} from "@/features/tasks/components/modeDisplay";
 import {
   PRIORITY_ICON,
   PRIORITY_TONE,
 } from "@/features/tasks/components/PriorityBadge";
 import type { Agent, AgentsConfig } from "@/lib/agent-types";
 import { ProviderIcon } from "@/features/tasks/components/providerIcon";
+import type { ModeDef } from "@/lib/modes-types";
 import {
-  MODES,
   PRIORITIES,
   type Mode,
   type Priority,
@@ -24,9 +28,10 @@ interface Props {
   taskId: string;
   meta: TaskMeta;
   agentsConfig: AgentsConfig;
+  modes: ModeDef[];
 }
 
-export function MetaEditor({ taskId, meta, agentsConfig }: Props) {
+export function MetaEditor({ taskId, meta, agentsConfig, modes }: Props) {
   const [pending, startTransition] = useTransition();
   const [optimisticMeta, addOptimisticPatch] = useOptimistic(
     meta,
@@ -60,6 +65,7 @@ export function MetaEditor({ taskId, meta, agentsConfig }: Props) {
       <PriorityModeAndTags
         priority={optimisticMeta.priority}
         mode={optimisticMeta.mode}
+        modes={modes}
         tags={optimisticMeta.tags}
         agent={optimisticMeta.agent ?? ""}
         agentsConfig={agentsConfig}
@@ -82,6 +88,7 @@ export function MetaEditor({ taskId, meta, agentsConfig }: Props) {
 function PriorityModeAndTags({
   priority,
   mode,
+  modes,
   tags,
   agent,
   agentsConfig,
@@ -93,6 +100,7 @@ function PriorityModeAndTags({
 }: {
   priority: Priority;
   mode: Mode;
+  modes: ModeDef[];
   tags: string[];
   agent: string;
   agentsConfig: AgentsConfig;
@@ -102,6 +110,10 @@ function PriorityModeAndTags({
   onAgent: (v: string) => void;
   disabled?: boolean;
 }) {
+  // Include the task's current mode even if it's no longer in the config, so
+  // the picker can always represent what's on disk.
+  const modeIds = modes.map((m) => m.id);
+  const modeOptions = modeIds.includes(mode) ? modeIds : [mode, ...modeIds];
   return (
     <div className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
       <PickerDropdown
@@ -110,10 +122,7 @@ function PriorityModeAndTags({
         onChange={onPriority}
         disabled={disabled}
         triggerAriaLabel="change priority"
-        triggerClassName={cn(
-          "inline-flex items-center gap-1 border px-1.5 py-0.5 font-mono text-xs leading-none transition-colors hover:opacity-90",
-          PRIORITY_TONE[priority],
-        )}
+        triggerClassName={cn(CHIP, PRIORITY_TONE[priority], "hover:opacity-90")}
         renderTrigger={(p) => {
           const Icon = PRIORITY_ICON[p];
           return (
@@ -139,28 +148,28 @@ function PriorityModeAndTags({
       <span>·</span>
       <PickerDropdown
         value={mode}
-        options={MODES}
+        options={modeOptions}
         onChange={onMode}
         disabled={disabled}
         triggerAriaLabel="change mode"
-        triggerClassName="inline-flex items-center gap-1 border border-border px-1.5 py-0.5 leading-none hover:border-foreground hover:text-foreground"
+        triggerClassName={cn(CHIP, CHIP_NEUTRAL)}
         renderTrigger={(m) => {
-          const Icon = MODE_ICON[m];
+          const Icon = modeIconFor(modes, m);
           return (
             <>
               <Icon className="size-3 opacity-80" aria-hidden />
-              {MODE_LABEL[m]}
+              {modeLabel(modes, m)}
               <ChevronDown className="size-3" aria-hidden />
             </>
           );
         }}
         renderOption={(m, selected) => {
-          const Icon = MODE_ICON[m];
+          const Icon = modeIconFor(modes, m);
           return (
             <>
               <Icon className="size-3 opacity-60" />
               <span className={cn(selected ? "text-foreground" : undefined)}>
-                {MODE_LABEL[m]}
+                {modeLabel(modes, m)}
               </span>
             </>
           );
@@ -213,7 +222,7 @@ function AgentPicker({
       onChange={(next) => onChange(next === ANY ? "" : next)}
       disabled={disabled}
       triggerAriaLabel="change agent"
-      triggerClassName="inline-flex items-center gap-1 border border-border px-1.5 py-0.5 leading-none text-muted-foreground hover:border-foreground hover:text-foreground"
+      triggerClassName={cn(CHIP, CHIP_NEUTRAL)}
       renderTrigger={(v) => (
         <>
           {renderIcon(v)}
@@ -260,7 +269,7 @@ function TagChips({
       {tags.map((t) => (
         <span
           key={t}
-          className="group inline-flex items-center gap-0.5 border border-border px-1.5 py-0.5"
+          className="group inline-flex items-center gap-1 rounded-md border border-border bg-muted/30 px-1.5 py-0.5 leading-none"
         >
           <span>{t}</span>
           <button
@@ -291,14 +300,14 @@ function TagChips({
           }}
           onBlur={commitAdd}
           placeholder="tag"
-          className="w-16 border border-border bg-background px-1 py-0.5 font-mono focus:border-foreground focus:outline-none"
+          className="w-16 rounded-md border border-input bg-background px-1.5 py-0.5 font-mono focus:border-ring focus:outline-none"
         />
       ) : (
         <button
           type="button"
           onClick={() => setAdding(true)}
           disabled={disabled}
-          className="inline-flex items-center gap-0.5 border border-transparent px-1 py-0.5 text-muted-foreground hover:border-border hover:text-foreground"
+          className="inline-flex items-center gap-0.5 rounded-md border border-transparent px-1 py-0.5 text-muted-foreground transition-colors hover:border-border hover:bg-muted/30 hover:text-foreground"
           aria-label="add tag"
         >
           <Plus className="size-3" />
@@ -365,7 +374,7 @@ function TitleEditor({
           }
         }}
         onBlur={commit}
-        className="block w-full resize-none overflow-hidden border border-border bg-background px-1 py-0.5 font-mono text-base leading-snug text-foreground focus:border-foreground focus:outline-none"
+        className="block w-full resize-none overflow-hidden rounded-md border border-input bg-background px-1.5 py-0.5 font-mono text-base leading-snug text-foreground focus:border-ring focus:outline-none"
       />
     );
   }
@@ -375,7 +384,7 @@ function TitleEditor({
       type="button"
       onClick={() => !disabled && setEditing(true)}
       disabled={disabled}
-      className="block w-full cursor-text whitespace-pre-wrap break-words text-left text-base leading-snug text-foreground hover:bg-muted/30"
+      className="block w-full cursor-text whitespace-pre-wrap break-words rounded-md border border-transparent px-1.5 py-0.5 text-left text-base leading-snug text-foreground transition-colors hover:bg-muted/30"
       title="click to edit title"
     >
       {value}

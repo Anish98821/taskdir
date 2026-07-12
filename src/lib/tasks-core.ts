@@ -13,6 +13,8 @@ import {
   type TaskMeta,
   type TaskSummary,
 } from "./task-types.ts";
+import { fireHooks } from "./hooks.ts";
+import { isConfiguredStatus } from "./statuses.ts";
 import { parseFolderName, slugify, type ParsedFolder } from "./tasks/identity.ts";
 import { parseMetaToml, stringifyMetaToml } from "./tasks/meta-toml.ts";
 import { ensureTasksDir, tasksDir } from "./tasks/paths.ts";
@@ -217,6 +219,7 @@ export async function createTask(input: CreateTaskInput): Promise<TaskSummary> {
   }
   await Promise.all(writes);
   invalidateTaskIndex();
+  void fireHooks("task.created", { id, title: meta.title, status, mode: meta.mode });
   return {
     id,
     slug,
@@ -229,12 +232,21 @@ export async function createTask(input: CreateTaskInput): Promise<TaskSummary> {
 }
 
 export async function updateStatus(id: string, status: Status): Promise<void> {
-  if (!isStatus(status)) throw new Error(`invalid status: ${status}`);
+  if (!isStatus(status) || !(await isConfiguredStatus(status))) {
+    throw new Error(`invalid status: ${status}`);
+  }
   const parsed = await findFolderById(id);
   if (!parsed) throw new Error(`task not found: ${id}`);
   const taskPath = path.join(tasksDir(), parsed.folder);
+  const previous = await fs
+    .readFile(path.join(taskPath, "status"), "utf8")
+    .then((s) => s.trim())
+    .catch(() => null);
   await fs.writeFile(path.join(taskPath, "status"), status + "\n", "utf8");
   invalidateTaskIndex();
+  if (previous !== status) {
+    void fireHooks("task.status_changed", { id, status, previous });
+  }
 }
 
 export async function deleteTask(id: string): Promise<void> {
@@ -243,6 +255,7 @@ export async function deleteTask(id: string): Promise<void> {
   const taskPath = path.join(tasksDir(), parsed.folder);
   await fs.rm(taskPath, { recursive: true, force: true });
   invalidateTaskIndex();
+  void fireHooks("task.deleted", { id });
 }
 
 export interface MetaPatch {
@@ -289,6 +302,11 @@ export async function updateMeta(id: string, patch: MetaPatch): Promise<TaskMeta
   if (next.agent === undefined) delete next.agent;
   await fs.writeFile(path.join(taskPath, "meta.toml"), stringifyMetaToml(next), "utf8");
   invalidateTaskIndex();
+  // Skip firing for purely-internal writes (e.g. marking a report as read).
+  const meaningful = Object.keys(patch).some((k) => k !== "report_seen_at");
+  if (meaningful) {
+    void fireHooks("task.updated", { id, title: next.title, priority: next.priority, mode: next.mode });
+  }
   return next;
 }
 

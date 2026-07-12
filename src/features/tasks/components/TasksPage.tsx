@@ -1,17 +1,21 @@
+import { cookies } from "next/headers";
 import {
   SidebarInset,
   SidebarProvider,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { readAgentsConfig } from "@/lib/agents";
+import { readModesConfig } from "@/lib/modes";
 import { readProjectConfig } from "@/lib/project-config";
+import { readStatusesConfig } from "@/lib/statuses";
 import { getTask, listTasks } from "@/lib/tasks";
-import { STATUSES, type Status } from "@/lib/task-types";
+import type { Status } from "@/lib/task-types";
 import { AppSidebar } from "./AppSidebar";
 import { Hotkeys } from "./Hotkeys";
 import { NewTaskButton } from "./NewTaskButton";
 import { NewTaskDraft } from "./NewTaskDraft";
 import { NotificationsDrawer } from "./NotificationsDrawer";
+import { ResizablePane } from "./ResizablePane";
 import { SearchBar } from "./SearchBar";
 import { SortDropdown } from "./SortDropdown";
 import { StatusFilter } from "./StatusFilter";
@@ -33,14 +37,22 @@ export async function TasksPage({
   searchParams: Promise<TasksPageSearchParams>;
 }) {
   const sp = await searchParams;
-  const [all, agentsConfig, project] = await Promise.all([
-    listTasks(),
-    readAgentsConfig(),
-    readProjectConfig(),
-  ]);
+  const [all, agentsConfig, project, modesConfig, statusesConfig, cookieStore] =
+    await Promise.all([
+      listTasks(),
+      readAgentsConfig(),
+      readProjectConfig(),
+      readModesConfig(),
+      readStatusesConfig(),
+      cookies(),
+    ]);
+  // The sidebar writes `sidebar_state` on every toggle; honor it on load so the
+  // open/closed choice persists across refreshes.
+  const sidebarDefaultOpen =
+    cookieStore.get("sidebar_state")?.value !== "false";
 
-  const statusFilter: Status | null = (STATUSES as string[]).includes(
-    sp.status ?? "",
+  const statusFilter: Status | null = statusesConfig.statuses.some(
+    (s) => s.id === sp.status,
   )
     ? (sp.status as Status)
     : null;
@@ -63,7 +75,7 @@ export async function TasksPage({
   })();
 
   return (
-    <SidebarProvider className="h-dvh">
+    <SidebarProvider className="h-dvh" defaultOpen={sidebarDefaultOpen}>
       <Hotkeys />
       <AppSidebar total={all.length} projectName={project.name} />
       <SidebarInset className="min-h-0">
@@ -75,35 +87,38 @@ export async function TasksPage({
         </header>
         <div className="flex min-h-0 flex-1 overflow-hidden">
           <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-            <div className="flex h-12 items-center gap-3 border-b border-border px-3">
+            <div className="flex h-12 items-center gap-2 border-b border-border px-3">
               <SearchBar />
-              <div className="ml-auto flex items-center gap-3">
+              <div className="ml-auto flex shrink-0 items-center gap-2">
                 <SortDropdown />
-                <StatusFilter />
+                <StatusFilter statuses={statusesConfig.statuses} />
                 <NewTaskButton />
               </div>
             </div>
             <div className="min-h-0 flex-1 overflow-y-auto">
-              <TaskList tasks={filtered} />
+              <TaskList tasks={filtered} statuses={statusesConfig.statuses} />
             </div>
           </div>
           {selected && (
-            <div className="hidden w-[44%] min-w-[420px] max-w-[640px] flex-shrink-0 md:block">
+            <ResizablePane>
               <TaskDetail
                 task={selected}
                 baseParams={baseParams}
                 selectedFile={sp.file ?? ""}
                 agentsConfig={agentsConfig}
+                modes={modesConfig.modes}
+                statuses={statusesConfig.statuses}
               />
-            </div>
+            </ResizablePane>
           )}
           {drafting && (
-            <div className="hidden w-[44%] min-w-[420px] max-w-[640px] flex-shrink-0 md:block">
+            <ResizablePane>
               <NewTaskDraft
                 closeHref={closeNewHref}
                 agentsConfig={agentsConfig}
+                modes={modesConfig.modes}
               />
-            </div>
+            </ResizablePane>
           )}
         </div>
       </SidebarInset>

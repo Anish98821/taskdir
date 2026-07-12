@@ -21,13 +21,24 @@ import {
   deleteFileAction,
   renameFileAction,
 } from "@/app/actions";
+import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Input } from "@/components/ui/input";
+import { InProgressDots } from "@/features/tasks/components/InProgressDots";
 import { CANONICAL_FILES, type TaskFile } from "@/lib/task-types";
 import { cn } from "@/lib/utils";
 
@@ -52,9 +63,7 @@ export function FileTabs({ taskId, files, activeName }: Props) {
   const router = useRouter();
   const params = useSearchParams();
   const [adding, setAdding] = useState(false);
-  const [newName, setNewName] = useState("");
   const [renaming, setRenaming] = useState<string | null>(null);
-  const [renameValue, setRenameValue] = useState("");
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [pendingDelete, setPendingDelete] = useState<string | null>(null);
@@ -64,12 +73,6 @@ export function FileTabs({ taskId, files, activeName }: Props) {
     sp.set("task", taskId);
     sp.set("file", name);
     return `/?${sp.toString()}`;
-  };
-
-  const closeAdd = () => {
-    setAdding(false);
-    setNewName("");
-    setError(null);
   };
 
   const createNamed = (raw: string) => {
@@ -82,7 +85,8 @@ export function FileTabs({ taskId, files, activeName }: Props) {
         sp.set("task", taskId);
         sp.set("file", name.endsWith(".md") ? name : `${name}.md`);
         router.replace(`/?${sp.toString()}`, { scroll: false });
-        closeAdd();
+        setAdding(false);
+        setError(null);
       } catch (e) {
         setError(e instanceof Error ? e.message : "failed");
       }
@@ -92,9 +96,9 @@ export function FileTabs({ taskId, files, activeName }: Props) {
   const existingNames = new Set(files.map((f) => f.name));
   const missingCanonical = CANONICAL_FILES.filter((n) => !existingNames.has(n));
 
-  const submitRename = (oldName: string) => {
-    if (!renameValue.trim() || pending) return;
-    const newN = renameValue.trim();
+  const submitRename = (oldName: string, raw: string) => {
+    const newN = raw.trim();
+    if (!newN || pending) return;
     startTransition(async () => {
       try {
         await renameFileAction(taskId, oldName, newN);
@@ -103,7 +107,7 @@ export function FileTabs({ taskId, files, activeName }: Props) {
         sp.set("file", newN.endsWith(".md") ? newN : `${newN}.md`);
         router.replace(`/?${sp.toString()}`, { scroll: false });
         setRenaming(null);
-        setRenameValue("");
+        setError(null);
       } catch (e) {
         setError(e instanceof Error ? e.message : "failed");
       }
@@ -132,7 +136,6 @@ export function FileTabs({ taskId, files, activeName }: Props) {
       <nav className="flex items-center gap-0 overflow-x-auto border-b border-border bg-muted/10">
         {files.map((f) => {
           const isActive = f.name === activeName;
-          const isRenaming = renaming === f.name;
           const Icon = iconFor(f.name);
           const isEmpty = f.content.trim().length === 0;
           return (
@@ -145,45 +148,28 @@ export function FileTabs({ taskId, files, activeName }: Props) {
                   : "text-muted-foreground hover:text-foreground hover:bg-muted/30",
               )}
             >
-              {isRenaming ? (
-                <div className="flex items-center gap-1.5 px-2 py-1.5">
-                  <Icon className="size-3.5 shrink-0 opacity-70" aria-hidden />
-                  <input
-                    autoFocus
-                    value={renameValue}
-                    onChange={(e) => setRenameValue(e.target.value)}
-                    onBlur={() => setRenaming(null)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") submitRename(f.name);
-                      if (e.key === "Escape") setRenaming(null);
-                    }}
-                    className="w-32 border border-border bg-background px-1 py-0.5 font-mono text-xs focus:border-foreground focus:outline-none"
-                  />
-                </div>
-              ) : (
-                <Link
-                  href={fileHref(f.name)}
-                  scroll={false}
-                  className="flex items-center gap-1.5 px-2 py-1.5 truncate"
-                  title={isEmpty ? `${f.name} (empty)` : f.name}
+              <Link
+                href={fileHref(f.name)}
+                scroll={false}
+                className="flex items-center gap-1.5 px-2 py-1.5 truncate"
+                title={isEmpty ? `${f.name} (empty)` : f.name}
+              >
+                <Icon
+                  className={cn(
+                    "size-3.5 shrink-0",
+                    isEmpty ? "opacity-30" : "opacity-70",
+                  )}
+                  aria-hidden
+                />
+                <span
+                  className={cn(
+                    "truncate",
+                    isEmpty && "italic opacity-60",
+                  )}
                 >
-                  <Icon
-                    className={cn(
-                      "size-3.5 shrink-0",
-                      isEmpty ? "opacity-30" : "opacity-70",
-                    )}
-                    aria-hidden
-                  />
-                  <span
-                    className={cn(
-                      "truncate",
-                      isEmpty && "italic opacity-60",
-                    )}
-                  >
-                    {f.name}
-                  </span>
-                </Link>
-              )}
+                  {f.name}
+                </span>
+              </Link>
               <DropdownMenu>
                 <DropdownMenuTrigger
                   className="px-1.5 py-1.5 opacity-0 group-hover:opacity-100 focus:opacity-100 text-muted-foreground hover:text-foreground disabled:cursor-wait disabled:opacity-50"
@@ -194,10 +180,7 @@ export function FileTabs({ taskId, files, activeName }: Props) {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="font-mono">
                   <DropdownMenuItem
-                    onSelect={() => {
-                      setRenameValue(f.name.replace(/\.md$/, ""));
-                      setRenaming(f.name);
-                    }}
+                    onSelect={() => setRenaming(f.name)}
                     disabled={pending}
                   >
                     <Pencil className="size-3" />
@@ -220,66 +203,46 @@ export function FileTabs({ taskId, files, activeName }: Props) {
           );
         })}
 
-        {adding ? (
-          <div className="flex items-center gap-1.5 border-r border-border bg-background px-2 py-1.5 text-xs">
-            <FilePlus className="size-3.5 shrink-0 opacity-70" aria-hidden />
-            <input
-              autoFocus
-              value={newName}
+        <DropdownMenu>
+          <DropdownMenuTrigger
+            className="flex items-center gap-1 border-r border-border px-2 py-1.5 text-xs text-muted-foreground hover:text-foreground"
+            aria-label="add file"
+            disabled={pending}
+          >
+            {pending ? (
+              <Loader2 className="size-3.5 animate-spin" aria-hidden />
+            ) : (
+              <Plus className="size-3.5" aria-hidden />
+            )}
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="font-mono">
+            {missingCanonical.map((n) => {
+              const Icon = iconFor(n);
+              return (
+                <DropdownMenuItem
+                  key={n}
+                  onClick={() => createNamed(n)}
+                  disabled={pending}
+                  className="text-xs"
+                >
+                  <Icon className="size-3" />
+                  {n}
+                </DropdownMenuItem>
+              );
+            })}
+            <DropdownMenuItem
+              onClick={() => setAdding(true)}
               disabled={pending}
-              onChange={(e) => setNewName(e.target.value)}
-              onBlur={closeAdd}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") createNamed(newName);
-                if (e.key === "Escape") closeAdd();
-              }}
-              placeholder="filename.md"
-              className="w-32 border border-border bg-background px-1 py-0.5 font-mono text-xs focus:border-foreground focus:outline-none"
-            />
-            {pending && <Loader2 className="size-3 animate-spin text-muted-foreground" />}
-          </div>
-        ) : (
-          <DropdownMenu>
-            <DropdownMenuTrigger
-              className="flex items-center gap-1 border-r border-border px-2 py-1.5 text-xs text-muted-foreground hover:text-foreground"
-              aria-label="add file"
-              disabled={pending}
+              className="text-xs text-muted-foreground"
             >
-              {pending ? (
-                <Loader2 className="size-3.5 animate-spin" aria-hidden />
-              ) : (
-                <Plus className="size-3.5" aria-hidden />
-              )}
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="font-mono">
-              {missingCanonical.map((n) => {
-                const Icon = iconFor(n);
-                return (
-                  <DropdownMenuItem
-                    key={n}
-                    onClick={() => createNamed(n)}
-                    disabled={pending}
-                    className="text-xs"
-                  >
-                    <Icon className="size-3" />
-                    {n}
-                  </DropdownMenuItem>
-                );
-              })}
-              <DropdownMenuItem
-                onClick={() => setAdding(true)}
-                disabled={pending}
-                className="text-xs text-muted-foreground"
-              >
-                <FilePlus className="size-3" />
-                custom…
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )}
+              <FilePlus className="size-3" />
+              custom…
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </nav>
 
-      {error && (
+      {error && !adding && renaming === null && (
         <div className="border-b border-destructive bg-destructive/10 px-2 py-1 text-xs text-destructive">
           {error}
         </div>
@@ -289,6 +252,40 @@ export function FileTabs({ taskId, files, activeName }: Props) {
           updating files
         </div>
       )}
+
+      {adding && (
+        <FileNameDialog
+          title="add file"
+          description=".md is appended if there is no extension."
+          confirmLabel="add file"
+          initialValue=""
+          pending={pending}
+          error={error}
+          onCancel={() => {
+            setAdding(false);
+            setError(null);
+          }}
+          onSubmit={createNamed}
+        />
+      )}
+
+      {renaming !== null && (
+        <FileNameDialog
+          key={renaming}
+          title={`rename ${renaming}`}
+          description="links in other files are not updated automatically."
+          confirmLabel="rename"
+          initialValue={renaming.replace(/\.md$/, "")}
+          pending={pending}
+          error={error}
+          onCancel={() => {
+            setRenaming(null);
+            setError(null);
+          }}
+          onSubmit={(value) => submitRename(renaming, value)}
+        />
+      )}
+
       <ConfirmDialog
         open={pendingDelete !== null}
         onOpenChange={(next) => {
@@ -302,5 +299,80 @@ export function FileTabs({ taskId, files, activeName }: Props) {
         onConfirm={() => pendingDelete && confirmDelete(pendingDelete)}
       />
     </div>
+  );
+}
+
+function FileNameDialog({
+  title,
+  description,
+  confirmLabel,
+  initialValue,
+  pending,
+  error,
+  onCancel,
+  onSubmit,
+}: {
+  title: string;
+  description: string;
+  confirmLabel: string;
+  initialValue: string;
+  pending: boolean;
+  error: string | null;
+  onCancel: () => void;
+  onSubmit: (value: string) => void;
+}) {
+  const [value, setValue] = useState(initialValue);
+  const canSave = value.trim().length > 0 && !pending;
+
+  return (
+    <Dialog open onOpenChange={(open) => !open && !pending && onCancel()}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{title}</DialogTitle>
+          <DialogDescription>{description}</DialogDescription>
+        </DialogHeader>
+        <form
+          className="flex flex-col gap-4"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (canSave) onSubmit(value);
+          }}
+        >
+          <div className="flex flex-col gap-1.5">
+            <span className="text-xs text-muted-foreground">filename</span>
+            <Input
+              autoFocus
+              value={value}
+              onChange={(e) => setValue(e.currentTarget.value)}
+              disabled={pending}
+              placeholder="notes.md"
+              className="font-mono"
+            />
+            {error && <span className="text-xs text-destructive">{error}</span>}
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={pending}
+              onClick={onCancel}
+            >
+              cancel
+            </Button>
+            <Button type="submit" size="sm" disabled={!canSave}>
+              {pending ? (
+                <span className="inline-flex items-center gap-1.5">
+                  {confirmLabel}
+                  <InProgressDots />
+                </span>
+              ) : (
+                confirmLabel
+              )}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }

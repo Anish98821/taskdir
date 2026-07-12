@@ -2,6 +2,7 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowDownUp } from "lucide-react";
+import { buttonVariants } from "@/components/ui/button";
 import { PickerDropdown } from "@/components/ui/picker-dropdown";
 import { cn } from "@/lib/utils";
 
@@ -37,11 +38,14 @@ export function SortDropdown() {
       options={TASK_SORTS}
       onChange={setSort}
       triggerAriaLabel="sort tasks"
-      triggerClassName="inline-flex h-8 items-center gap-1 border border-border px-2 font-mono text-xs leading-none text-muted-foreground hover:border-foreground hover:text-foreground"
+      triggerClassName={cn(
+        buttonVariants({ variant: "outline", size: "sm" }),
+        "font-mono text-xs font-normal text-muted-foreground hover:text-foreground",
+      )}
       renderTrigger={(sort) => (
         <>
           <ArrowDownUp className="size-3.5" aria-hidden />
-          {SORT_LABEL[sort]}
+          <span className="hidden sm:inline">{SORT_LABEL[sort]}</span>
         </>
       )}
       renderOption={(sort, selected) => (

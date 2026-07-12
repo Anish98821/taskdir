@@ -1,4 +1,5 @@
-import { MODES, PRIORITIES, type Mode, type Priority } from "../../../lib/task-types.ts";
+import { PRIORITIES, type Mode, type Priority } from "../../../lib/task-types.ts";
+import { DEFAULT_MODE_ID, isModeId } from "../../../lib/modes-types.ts";
 
 export interface CreateTaskFormInput {
   title: string;
@@ -25,10 +26,8 @@ export function parseCreateTaskForm(formData: FormData): CreateTaskFormInput | n
     ? (priorityRaw as Priority)
     : "med";
 
-  const modeRaw = String(formData.get("mode") ?? "plan_and_execute");
-  const mode: Mode = (MODES as string[]).includes(modeRaw)
-    ? (modeRaw as Mode)
-    : "plan_and_execute";
+  const modeRaw = String(formData.get("mode") ?? DEFAULT_MODE_ID);
+  const mode: Mode = isModeId(modeRaw) ? modeRaw : DEFAULT_MODE_ID;
 
   const tags = String(formData.get("tags") ?? "")
     .split(",")

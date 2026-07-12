@@ -28,7 +28,7 @@ export function SearchBar() {
       value={value}
       onChange={(e) => setValue(e.target.value)}
       placeholder="search tasks… (press / to focus)"
-      className="h-8 w-96 font-mono text-sm"
+      className="h-8 w-full max-w-96 min-w-0 flex-1 font-mono text-sm"
     />
   );
 }

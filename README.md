@@ -31,13 +31,82 @@ Tasks live as folders on disk. `git diff`, `cp -r`, `grep -r` all work. Agents c
 - `create_file(id, filename)`
 - `rename_file(id, old_name, new_name)`
 - `delete_file(id, filename)`
+- `list_modes()` — project-defined task modes
+- `list_agents()`
 - `register_agent(name, provider, id?)`
+- `unregister_agent(id)`
 
 ## Web UI
 
 - List view with status/priority/tags; blocked tasks sort first.
 - Detail view edits markdown files with basic conflict detection.
 - Live updates via chokidar → SSE.
+- Settings → agents / modes / statuses / hooks / project. Edit/preview,
+  sidebar, pane width, and new-task defaults persist across refreshes.
+
+## Modes & strategies
+
+Every task has a **mode** describing its class of work. The four built-ins
+(`plan_only`, `plan_and_execute`, `fast_execute`, `report_only`) are just
+defaults — rename them, swap icons, or add your own in the web UI (Settings →
+modes) or `.taskdir/modes.toml`:
+
+```toml
+[[mode]]
+id = "triage"
+label = "Triage"
+icon = "bug"
+```
+
+Each mode can carry a **strategy** — markdown for how to approach that class of
+task — stored at `.taskdir/strategies/<mode_id>.md`. When an agent calls
+`get_task`, the strategy for the task's mode is appended to the output, so the
+guidance travels with the work. Edit strategies in Settings → modes.
+
+## Statuses
+
+Statuses are yours too. `taskdir init` seeds `pending`, `in_progress`, and
+`done`; relabel, recolor, remove, or add your own in the web UI (Settings →
+statuses) or `.taskdir/statuses.toml`:
+
+```toml
+[[status]]
+id = "in_review"
+label = "in review"
+color = "cyan"
+```
+
+Two ids carry extra UI behavior when configured: `awaiting_approval` shows the
+approve-plan banner and `blocked` shows the clarification banner. Tasks whose
+on-disk status is no longer configured stay visible (rendered neutral) — the
+files are the source of truth.
+
+## Hooks
+
+Run a shell command or POST a webhook when things happen. Configure in the web
+UI (Settings → hooks) or edit `.taskdir/hooks.toml` directly:
+
+```toml
+[[hook]]
+event = "task.status_changed"   # or "*" for every event
+type = "command"
+command = "notify-send \"$TASKDIR_EVENT\""
+
+[[hook]]
+event = "*"
+type = "webhook"
+url = "https://example.com/taskdir"
+```
+
+Events: `task.created`, `task.status_changed`, `task.updated`, `task.deleted`,
+`agent.registered`, `agent.unregistered`.
+
+- **command** hooks get the event JSON on stdin, plus `TASKDIR_EVENT` and
+  `TASKDIR_*` env vars for each scalar payload field (e.g. `TASKDIR_ID`).
+- **webhook** hooks receive a JSON body `{ event, timestamp, data }`.
+
+Firing is best-effort and non-blocking — a slow or failing hook never blocks the
+operation that triggered it (10s timeout).
 
 ## Stack
 

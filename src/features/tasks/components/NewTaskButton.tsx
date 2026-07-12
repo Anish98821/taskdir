@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Plus } from "lucide-react";
+import { buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 export function NewTaskButton() {
   const params = useSearchParams();
@@ -19,7 +21,10 @@ export function NewTaskButton() {
     <Link
       href={href}
       scroll={false}
-      className="inline-flex h-8 items-center gap-1 border border-foreground bg-foreground px-2 text-xs font-semibold text-background hover:bg-foreground/85"
+      className={cn(
+        buttonVariants({ size: "sm" }),
+        "font-mono text-xs",
+      )}
     >
       <Plus className="size-3.5" />
       new

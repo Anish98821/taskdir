@@ -1,5 +1,8 @@
-import { describe, it } from "node:test";
+import { afterEach, describe, it } from "node:test";
 import assert from "node:assert/strict";
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import {
   handleRpc,
   PROTOCOL_VERSION,
@@ -271,6 +274,68 @@ describe("handleRpc", () => {
       jsonrpc: "2.0",
       id: "missing-task",
       error: { code: -32000, message: "task not found: 9999" },
+    });
+  });
+});
+
+describe("agent registry tools", () => {
+  const prevRoot = process.env.TASKDIR_PROJECT_ROOT;
+  const roots: string[] = [];
+
+  async function useTempProjectRoot(): Promise<string> {
+    const dir = await mkdtemp(join(tmpdir(), "taskdir-agents-test-"));
+    roots.push(dir);
+    process.env.TASKDIR_PROJECT_ROOT = dir;
+    return dir;
+  }
+
+  afterEach(async () => {
+    if (prevRoot === undefined) delete process.env.TASKDIR_PROJECT_ROOT;
+    else process.env.TASKDIR_PROJECT_ROOT = prevRoot;
+    await Promise.all(roots.splice(0).map((d) => rm(d, { recursive: true, force: true })));
+  });
+
+  it("lists, registers, and unregisters agents", async () => {
+    await useTempProjectRoot();
+
+    const empty = JSON.parse(textContent((await callTool("list_agents", {})).result)) as {
+      agents: unknown[];
+    };
+    assert.deepEqual(empty.agents, []);
+
+    const registered = JSON.parse(
+      textContent((await callTool("register_agent", { name: "Claude Code", provider: "anthropic" })).result),
+    ) as { agents: Array<{ id: string; name: string; provider: string }> };
+    assert.equal(registered.agents.length, 1);
+    assert.deepEqual(registered.agents[0], {
+      id: "claude-code",
+      name: "Claude Code",
+      provider: "anthropic",
+    });
+
+    const listed = JSON.parse(textContent((await callTool("list_agents", {})).result)) as {
+      agents: Array<{ id: string }>;
+    };
+    assert.deepEqual(listed.agents.map((a) => a.id), ["claude-code"]);
+
+    const afterRemove = JSON.parse(
+      textContent((await callTool("unregister_agent", { id: "claude-code" })).result),
+    ) as { agents: unknown[] };
+    assert.deepEqual(afterRemove.agents, []);
+  });
+
+  it("errors when unregistering an unknown agent", async () => {
+    await useTempProjectRoot();
+    const response = failure(await handleRpc({
+      jsonrpc: "2.0",
+      id: "no-agent",
+      method: "tools/call",
+      params: { name: "unregister_agent", arguments: { id: "ghost" } },
+    }));
+    assert.deepEqual(response, {
+      jsonrpc: "2.0",
+      id: "no-agent",
+      error: { code: -32000, message: "agent not found: ghost" },
     });
   });
 });

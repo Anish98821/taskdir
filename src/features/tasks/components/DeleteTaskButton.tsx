@@ -37,7 +37,12 @@ export function DeleteTaskButton({ taskId, taskTitle }: Props) {
         open={open}
         onOpenChange={(next) => !pending && setOpen(next)}
         title={`delete task ${taskId}?`}
-        description="this action cannot be undone."
+        description={
+          <>
+            “{taskTitle}” and all its files will be removed. this action cannot
+            be undone.
+          </>
+        }
         confirmLabel="delete"
         destructive
         pending={pending}

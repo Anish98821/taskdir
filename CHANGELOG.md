@@ -2,7 +2,9 @@
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [SemVer](https://semver.org/).
 
-## 0.6.0 — 2026-07-12
+## 0.6.1 — 2026-07-12
+
+(0.6.0 was tagged but its release run failed on a CI-only test issue; it was never published. 0.6.1 is the same feature set plus the CI fix.)
 
 ### Added
 
@@ -23,6 +25,10 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [S
 ### Removed
 
 - The report toggle in the new-task draft. `generate_report` still defaults to `true`; set it in `meta.toml` if you need to opt out.
+
+### Fixed
+
+- Tests now isolate `TASKDIR_PROJECT_ROOT`, so they no longer read the developer's real `.taskdir/`, and the test glob is quoted so CI runs the full suite on Linux.
 
 ## 0.5.0 — 2026-07-05
 

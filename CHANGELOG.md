@@ -2,6 +2,23 @@
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [SemVer](https://semver.org/).
 
+## 0.7.0 — 2026-07-14
+
+### Added
+
+- **Full CLI mirror of the MCP surface.** Every MCP tool is now a plain `taskdir` subcommand — `taskdir create_task`, `taskdir list_tasks`, `taskdir update_status`, `taskdir register_agent`, `taskdir unregister_agent`, and the rest. Run `taskdir tools` for the list and `taskdir <tool> --help` for a tool's options. The commands are derived from the same schema the MCP server exposes, so the two can't drift. Options are `--key value`/`--key=value`; required fields may be passed positionally (e.g. `taskdir update_status 0001 done`).
+- **Inline hook scripts.** A command hook can now carry inline code (a `script` block) instead of only a command/file path. Settings → hooks offers a dedicated code editor for it. The engine writes the script to a temp file and runs it, honoring a shebang (`#!/usr/bin/env node`, `#!/bin/bash`, …) cross-platform, or falling back to the platform shell.
+- **`taskdir init --interface <mcp|cli>`** (with `--cli` shorthand) chooses how agents talk to taskdir and tailors the installed skill files accordingly. Asked interactively when not passed.
+- **Auto-run agent on new tasks.** Ships a `task.created` hook + `scripts/taskdir-on-create.mjs` that launches a Claude Code CLI detached to work each newly created task, with a recursion guard (`TASKDIR_AUTORUN`) and knobs (`TASKDIR_AUTORUN_DISABLE`, `TASKDIR_CLAUDE_BIN`, `TASKDIR_CLAUDE_ARGS`).
+
+### Changed
+
+- Default modes are now `plan` / `bugfix` / `research` (with `plan` the default), each with its own icon.
+
+### Removed
+
+- The `report.md` generation feature (`generate_report` / `report_seen_at` fields and the report notification). Agents can still create a `report.md` like any other markdown file. Old `generate_report` / `report_seen_at` keys in existing `meta.toml` files are ignored on read.
+
 ## 0.6.1 — 2026-07-12
 
 (0.6.0 was tagged but its release run failed on a CI-only test issue; it was never published. 0.6.1 is the same feature set plus the CI fix.)

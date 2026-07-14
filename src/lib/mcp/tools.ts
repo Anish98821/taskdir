@@ -33,10 +33,6 @@ function str(v: unknown): string | undefined {
   return typeof v === "string" ? v : undefined;
 }
 
-function bool(v: unknown): boolean | undefined {
-  return typeof v === "boolean" ? v : undefined;
-}
-
 export const TOOLS = [
   {
     name: "list_tasks",
@@ -66,7 +62,7 @@ export const TOOLS = [
   },
   {
     name: "create_task",
-    description: "Create a new task with title and optional context/priority/mode/tags/generate_report/agent. mode defaults to plan_and_execute. generate_report defaults to true. context is written to context.md only if non-empty.",
+    description: "Create a new task with title and optional context/priority/mode/tags/agent. mode defaults to the project's first mode (see list_modes). context is written to context.md only if non-empty.",
     inputSchema: {
       type: "object",
       properties: {
@@ -75,7 +71,6 @@ export const TOOLS = [
         priority: { type: "string", enum: PRIORITIES },
         mode: { type: "string", description: "project-defined mode id (see list_modes)" },
         tags: { type: "array", items: { type: "string" } },
-        generate_report: { type: "boolean" },
         agent: { type: "string" },
       },
       required: ["title"],
@@ -97,7 +92,7 @@ export const TOOLS = [
   },
   {
     name: "update_meta",
-    description: "Update a task's meta.toml (title, priority, mode, tags, generate_report, agent). Any omitted field is left unchanged.",
+    description: "Update a task's meta.toml (title, priority, mode, tags, agent). Any omitted field is left unchanged.",
     inputSchema: {
       type: "object",
       properties: {
@@ -106,7 +101,6 @@ export const TOOLS = [
         priority: { type: "string", enum: PRIORITIES },
         mode: { type: "string", description: "project-defined mode id (see list_modes)" },
         tags: { type: "array", items: { type: "string" } },
-        generate_report: { type: "boolean" },
         agent: { type: "string" },
       },
       required: ["id"],
@@ -257,7 +251,6 @@ export async function callTool(name: string, args: Record<string, unknown>) {
         priority: str(args.priority) as Priority | undefined,
         mode: str(args.mode) as Mode | undefined,
         tags,
-        generate_report: bool(args.generate_report),
         agent: str(args.agent) ?? str(args.runtime),
       });
       return text(`created task ${created.id}`);
@@ -285,7 +278,6 @@ export async function callTool(name: string, args: Record<string, unknown>) {
         priority: str(args.priority) as Priority | undefined,
         mode: str(args.mode) as Mode | undefined,
         tags,
-        generate_report: bool(args.generate_report),
         agent: agentFromArgs,
       });
       return text(JSON.stringify(next, null, 2));

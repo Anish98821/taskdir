@@ -52,20 +52,6 @@ export async function setMeta(id: string, patch: MetaPatch): Promise<void> {
   refresh();
 }
 
-export async function markReportRead(id: string): Promise<void> {
-  await updateMeta(id, { report_seen_at: new Date().toISOString() });
-  refresh();
-}
-
-export async function markAllReportsRead(taskIds: string[]): Promise<void> {
-  if (taskIds.length === 0) return;
-  const stamp = new Date().toISOString();
-  await Promise.all(
-    taskIds.map((id) => updateMeta(id, { report_seen_at: stamp })),
-  );
-  refresh();
-}
-
 export async function answerClarification(
   id: string,
   formData: FormData,

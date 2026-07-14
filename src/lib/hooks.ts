@@ -18,11 +18,14 @@
 // returned promise.
 
 import { spawn } from "node:child_process";
+import crypto from "node:crypto";
 import { promises as fs } from "node:fs";
+import os from "node:os";
 import path from "node:path";
 
 import {
   HOOK_EVENTS,
+  isHookEnabled,
   isHookEvent,
   type Hook,
   type HookEvent,
@@ -33,6 +36,7 @@ import { projectRoot } from "./project-root.ts";
 
 export {
   HOOK_EVENTS,
+  isHookEnabled,
   isHookEvent,
   type Hook,
   type HookEvent,
@@ -76,14 +80,17 @@ export function parseHooksToml(src: string): HooksConfig {
         event,
         type,
         ...(current.command ? { command: current.command } : {}),
+        ...(current.script ? { script: current.script } : {}),
         ...(current.url ? { url: current.url } : {}),
         ...(current.name ? { name: current.name } : {}),
+        ...(current.enabled === false ? { enabled: false } : {}),
       });
     }
     current = null;
   };
-  for (const raw of src.split(/\r?\n/)) {
-    const line = raw.trim();
+  const rawLines = src.split(/\r?\n/);
+  for (let i = 0; i < rawLines.length; i++) {
+    const line = rawLines[i].trim();
     if (!line || line.startsWith("#")) continue;
     if (line === "[[hook]]") {
       flush();
@@ -94,11 +101,32 @@ export function parseHooksToml(src: string): HooksConfig {
     const eq = line.indexOf("=");
     if (eq < 0) continue;
     const key = line.slice(0, eq).trim();
-    const value = parseStringValue(line.slice(eq + 1).trim());
+    const rawValue = line.slice(eq + 1).trim();
+    if (key === "enabled") {
+      if (rawValue === "true") current.enabled = true;
+      else if (rawValue === "false") current.enabled = false;
+      continue;
+    }
+    // Multi-line literal string: `key = '''` opens a block that runs verbatim
+    // (no escaping) until a line that is exactly `'''`. Used for inline scripts.
+    if (rawValue === "'''") {
+      const body: string[] = [];
+      i++;
+      while (i < rawLines.length && rawLines[i].trim() !== "'''") {
+        body.push(rawLines[i]);
+        i++;
+      }
+      const content = body.join("\n");
+      if (key === "command") current.command = content;
+      else if (key === "script") current.script = content;
+      continue;
+    }
+    const value = parseStringValue(rawValue);
     if (value === null) continue;
     if (key === "event") current.event = value as HookEvent | "*";
     else if (key === "type") current.type = value as HookType;
     else if (key === "command") current.command = value;
+    else if (key === "script") current.script = value;
     else if (key === "url") current.url = value;
     else if (key === "name") current.name = value;
   }
@@ -106,12 +134,23 @@ export function parseHooksToml(src: string): HooksConfig {
   return { hooks };
 }
 
+// Render a value as either a single-line string or, when it spans lines, a TOML
+// multi-line literal (''' … ''') so inline scripts round-trip verbatim.
+function tomlValue(value: string): string {
+  if (value.includes("\n")) return `'''\n${value}\n'''`;
+  return quoteValue(value);
+}
+
 export function stringifyHooksToml(config: HooksConfig): string {
   const blocks = config.hooks.map((h) => {
     const lines = [`[[hook]]`, `event = ${quoteValue(h.event)}`, `type = ${quoteValue(h.type)}`];
-    if (h.type === "command" && h.command) lines.push(`command = ${quoteValue(h.command)}`);
+    if (h.type === "command") {
+      if (h.script) lines.push(`script = ${tomlValue(h.script)}`);
+      else if (h.command) lines.push(`command = ${tomlValue(h.command)}`);
+    }
     if (h.type === "webhook" && h.url) lines.push(`url = ${quoteValue(h.url)}`);
     if (h.name) lines.push(`name = ${quoteValue(h.name)}`);
+    if (h.enabled === false) lines.push(`enabled = false`);
     return lines.join("\n");
   });
   return blocks.join("\n\n") + (blocks.length ? "\n" : "");
@@ -120,15 +159,24 @@ export function stringifyHooksToml(config: HooksConfig): string {
 function normalizeHook(h: Hook): Hook | null {
   const validEvent = h.event === "*" || isHookEvent(h.event);
   if (!validEvent) return null;
+  const extra = {
+    ...(h.name?.trim() ? { name: h.name.trim() } : {}),
+    ...(h.enabled === false ? { enabled: false as const } : {}),
+  };
   if (h.type === "command") {
+    // Inline script wins over a command string; keep only one on disk.
+    const script = h.script;
+    if (script && script.trim()) {
+      return { event: h.event, type: "command", script, ...extra };
+    }
     const command = h.command?.trim();
     if (!command) return null;
-    return { event: h.event, type: "command", command, ...(h.name?.trim() ? { name: h.name.trim() } : {}) };
+    return { event: h.event, type: "command", command, ...extra };
   }
   if (h.type === "webhook") {
     const url = h.url?.trim();
     if (!url) return null;
-    return { event: h.event, type: "webhook", url, ...(h.name?.trim() ? { name: h.name.trim() } : {}) };
+    return { event: h.event, type: "webhook", url, ...extra };
   }
   return null;
 }
@@ -159,17 +207,64 @@ export interface HookPayload {
   data: Record<string, unknown>;
 }
 
-function runCommand(hook: Hook, payload: HookPayload): Promise<void> {
-  if (!hook.command) return Promise.resolve();
+// Parse a shebang line's interpreter, e.g. `#!/usr/bin/env node` -> "node",
+// `#!/bin/bash` -> "/bin/bash". Returns null when there's no shebang.
+function shebangInterpreter(script: string): string | null {
+  const first = script.split(/\r?\n/, 1)[0] ?? "";
+  const m = first.match(/^#!\s*(\S+)(?:\s+(\S+))?/);
+  if (!m) return null;
+  // `/usr/bin/env node` -> use the program after env.
+  if (/(^|\/)env$/.test(m[1]) && m[2]) return m[2];
+  return m[1];
+}
+
+// Materialize an inline script to a temp file and return the shell command that
+// runs it (plus a cleanup). A shebang picks the interpreter (cross-platform);
+// otherwise the platform shell runs the file directly.
+async function stageScript(
+  script: string,
+): Promise<{ command: string; cleanup: () => void }> {
+  const interp = shebangInterpreter(script);
+  const onWin = process.platform === "win32";
+  // A shebang-less script defaults to the OS shell, so give it the extension
+  // that shell expects to execute (.cmd on Windows, .sh elsewhere).
+  const ext = interp ? "" : onWin ? ".cmd" : ".sh";
+  const file = path.join(
+    os.tmpdir(),
+    `taskdir-hook-${crypto.randomBytes(6).toString("hex")}${ext}`,
+  );
+  await fs.writeFile(file, script, { mode: 0o700 });
+  const cleanup = () => {
+    void fs.rm(file, { force: true }).catch(() => {});
+  };
+  const quoted = `"${file}"`;
+  let command: string;
+  if (interp) command = `"${interp}" ${quoted}`;
+  else if (onWin) command = quoted; // cmd runs the .cmd batch file
+  else command = `sh ${quoted}`;
+  return { command, cleanup };
+}
+
+async function runCommand(hook: Hook, payload: HookPayload): Promise<void> {
+  let commandStr: string;
+  let cleanup: (() => void) | undefined;
+  if (hook.script?.trim()) {
+    ({ command: commandStr, cleanup } = await stageScript(hook.script));
+  } else if (hook.command) {
+    commandStr = hook.command;
+  } else {
+    return;
+  }
   const json = JSON.stringify(payload);
   return new Promise<void>((resolve) => {
     let settled = false;
     const done = () => {
       if (settled) return;
       settled = true;
+      cleanup?.();
       resolve();
     };
-    const child = spawn(hook.command!, {
+    const child = spawn(commandStr, {
       shell: true,
       stdio: ["pipe", "ignore", "ignore"],
       env: {
@@ -244,7 +339,7 @@ export async function fireHooks(
     return;
   }
   const matching = config.hooks.filter(
-    (h) => h.event === event || h.event === "*",
+    (h) => isHookEnabled(h) && (h.event === event || h.event === "*"),
   );
   if (matching.length === 0) return;
   const payload: HookPayload = {

@@ -97,7 +97,7 @@ export function ModesSettings({ modes, strategies }: Props) {
       title="modes"
       description={
         <>
-          modes classify tasks (plan, execute, report, …). each can carry a{" "}
+          modes classify tasks (plan, bugfix, research, …). each can carry a{" "}
           <strong>strategy</strong> — markdown agents receive via{" "}
           <code>get_task</code>.
         </>

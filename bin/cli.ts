@@ -43,9 +43,12 @@ const MCP_OPTIONS: McpOption[] = [
   { id: "cursor", label: "Cursor      — .cursor/mcp.json",  relPath: ".cursor/mcp.json" },
 ];
 
+type AgentInterface = "mcp" | "cli";
+
 interface InitArgs {
   tasksDir?: string;
   projectName?: string;
+  iface?: AgentInterface;
   skills?: Set<SkillTarget>;
   mcp?: Set<McpTarget>;
   yes: boolean;
@@ -59,6 +62,10 @@ function parseInitArgs(argv: string[]): InitArgs {
     if (a === "--yes" || a === "-y") out.yes = true;
     else if (a === "--tasks-dir") out.tasksDir = argv[++i];
     else if (a === "--name") out.projectName = argv[++i];
+    else if (a === "--interface") {
+      const v = (argv[++i] ?? "").trim().toLowerCase();
+      if (v === "mcp" || v === "cli") out.iface = v;
+    } else if (a === "--cli") out.iface = "cli";
     else if (a === "--skills") {
       const raw = argv[++i] ?? "";
       const parsed = new Set<SkillTarget>();
@@ -170,32 +177,83 @@ async function promptMultiSelect<T extends string>(
   });
 }
 
-function buildSkillContent(projectName: string): string {
+async function promptSingleSelect<T extends string>(
+  header: string,
+  items: ReadonlyArray<{ id: T; label: string; hint?: string }>,
+  defaultId: T,
+): Promise<T> {
+  if (!process.stdin.isTTY) return defaultId;
+  let cursor = Math.max(0, items.findIndex((it) => it.id === defaultId));
+
+  const out = process.stdout;
+  const stdin = process.stdin;
+  emitKeypressEvents(stdin);
+  const wasRaw = stdin.isRaw;
+  stdin.setRawMode(true);
+  stdin.resume();
+
+  out.write(`${header}\n`);
+  out.write("\x1B[?25l");
+
+  const render = (first: boolean) => {
+    if (!first) out.write(`\x1B[${items.length}A`);
+    for (let i = 0; i < items.length; i++) {
+      const isCursor = i === cursor;
+      const pointer = isCursor ? ">" : " ";
+      const marker = isCursor ? "(o)" : "( )";
+      const hint = items[i].hint ? `  \x1B[2m${items[i].hint}\x1B[0m` : "";
+      out.write(`\r\x1B[2K${pointer} ${marker} ${items[i].label}${hint}\n`);
+    }
+  };
+
+  render(true);
+
+  return new Promise<T>((resolve) => {
+    const cleanup = () => {
+      stdin.removeListener("keypress", onKey);
+      out.write("\x1B[?25h");
+      stdin.setRawMode(wasRaw);
+      stdin.pause();
+    };
+    const onKey = (
+      _str: string | undefined,
+      key: { name?: string; ctrl?: boolean } | undefined,
+    ) => {
+      if (!key) return;
+      if (key.ctrl && key.name === "c") {
+        cleanup();
+        process.exit(130);
+      }
+      if (key.name === "up" || key.name === "k") {
+        cursor = (cursor - 1 + items.length) % items.length;
+        render(false);
+      } else if (key.name === "down" || key.name === "j") {
+        cursor = (cursor + 1) % items.length;
+        render(false);
+      } else if (key.name === "return") {
+        cleanup();
+        resolve(items[cursor].id);
+      }
+    };
+    stdin.on("keypress", onKey);
+  });
+}
+
+function buildSkillContent(projectName: string, iface: AgentInterface): string {
   const displayName = projectName || "this project";
-  return `---
-name: taskdir
-description: Use whenever coordinating work in a project that has a .taskdir/ folder. Register as an agent, pick up tasks assigned to you (or unassigned), keep status current, and split large tasks into smaller ones. Applies to ${displayName}.
----
+  const isCli = iface === "cli";
 
-# Taskdir — Agent Skill
+  const exposesLine = isCli
+    ? "and exposes them as `taskdir` CLI commands you run from the shell. Follow this skill every time you work in this project."
+    : "and exposes them over MCP. Follow this skill every time you connect.";
 
-You're an AI coding agent working in **${displayName}**, a project that uses **taskdir** to track work. Taskdir is a local-first task tracker that stores tasks as folders of markdown on disk and exposes them over MCP. Follow this skill every time you connect.
+  const listAgentsExample = isCli
+    ? "```bash\ntaskdir list_agents\n```"
+    : '```jsonc\n// MCP tool call\n{ "name": "list_agents", "arguments": {} }\n```';
 
-## 1. Reuse or register an agent on first connect
-
-Before doing any work, make sure you're represented in the project's agent registry. This makes the user aware of you and lets task routing target you. **Prefer reusing an existing agent over registering a new one.**
-
-First, list who's already registered:
-
-\`\`\`jsonc
-// MCP tool call
-{ "name": "list_agents", "arguments": {} }
-\`\`\`
-
-- If a **generic agent of your provider/model already exists** (e.g. a \`Claude Code\` entry when you're Claude Code), just adopt it — use its \`id\` for task routing and skip registration. Don't create a near-duplicate.
-- Only \`register_agent\` when there's no suitable match, **or** the user explicitly wants a distinct identity for this session.
-
-\`\`\`jsonc
+  const registerAgentExample = isCli
+    ? "```bash\n# only when no reusable agent exists\n# provider: anthropic | openai | google | meta | mistral | xai | cohere | deepseek | custom\ntaskdir register_agent --name \"Claude Code\" --provider anthropic\n```"
+    : `\`\`\`jsonc
 // MCP tool call — only when no reusable agent exists
 {
   "name": "register_agent",
@@ -204,7 +262,71 @@ First, list who's already registered:
     "provider": "<provider id>"        // anthropic | openai | google | meta | mistral | xai | cohere | deepseek | custom
   }
 }
+\`\`\``;
+
+  const clarificationCall = isCli
+    ? "`taskdir append_to_file <id> clarification.md \"<your question>\"`"
+    : "`append_to_file`";
+
+  const surfaceBlock = isCli
+    ? `## CLI commands
+
+Run any of these from the shell — see \`taskdir tools\` for the full list and \`taskdir <tool> --help\` for one tool's options. Required fields can be passed positionally, in order.
+
+\`\`\`bash
+taskdir list_tasks [--status <s>] [--tag <t>] [--priority <p>]
+taskdir get_task <id>
+taskdir create_task --title "..." [--context ...] [--mode ...] [--tags a,b] [--agent ...]
+taskdir update_status <id> <status>
+taskdir update_meta <id> [--title ...] [--priority ...] [--mode ...] [--tags a,b] [--agent ...]
+taskdir append_to_file <id> <filename> <content>
+taskdir create_file <id> <filename>
+taskdir rename_file <id> <old_name> <new_name>
+taskdir delete_file <id> <filename>
+taskdir list_modes
+taskdir list_agents
+taskdir register_agent --name "..." --provider <provider>
+taskdir unregister_agent <id>
+\`\`\``
+    : `## MCP surface
+
 \`\`\`
+list_tasks(filter)
+get_task(id)
+create_task({title, ...})
+update_status(id, status)
+update_meta(id, patch)
+append_to_file(id, filename, content)
+create_file(id, filename)
+rename_file(id, old, new)
+delete_file(id, filename)
+list_modes()
+list_agents()
+register_agent({name, provider, id?})
+unregister_agent(id)
+\`\`\``;
+
+  return `---
+name: taskdir
+description: Use whenever coordinating work in a project that has a .taskdir/ folder. Register as an agent, pick up tasks assigned to you (or unassigned), keep status current, and split large tasks into smaller ones. Applies to ${displayName}.
+---
+
+# Taskdir — Agent Skill
+
+You're an AI coding agent working in **${displayName}**, a project that uses **taskdir** to track work. Taskdir is a local-first task tracker that stores tasks as folders of markdown on disk ${exposesLine}
+
+## 1. Reuse or register an agent on first connect
+
+Before doing any work, make sure you're represented in the project's agent registry. This makes the user aware of you and lets task routing target you. **Prefer reusing an existing agent over registering a new one.**
+
+First, list who's already registered:
+
+${listAgentsExample}
+
+- If a **generic agent of your provider/model already exists** (e.g. a \`Claude Code\` entry when you're Claude Code), just adopt it — use its \`id\` for task routing and skip registration. Don't create a near-duplicate.
+- Only \`register_agent\` when there's no suitable match, **or** the user explicitly wants a distinct identity for this session.
+
+${registerAgentExample}
 
 Rules:
 - Use a **stable, generic display name** for your provider/model class (e.g. "Claude Code") so registration is idempotent and reuses one record across sessions.
@@ -238,12 +360,7 @@ Statuses: \`pending\`, \`in_progress\`, \`awaiting_approval\`, \`blocked\`, \`do
 
 Modes are project-defined — call \`list_modes\` to see them. A task's mode is in \`meta.toml\`; if that mode has a **strategy**, \`get_task\` appends it under \`## strategy for mode: <id>\` — follow it as instructions for that class of task.
 
-Set \`in_progress\` immediately when you start. Finish line depends on \`mode\`:
-- \`plan_and_execute\` / \`fast_execute\`: code shipped and verified.
-- \`plan_only\`: \`plan.md\` written, then \`awaiting_approval\`.
-- \`report_only\`: \`report.md\` written.
-
-If \`meta.generate_report = true\`, write \`report.md\` before flipping to \`done\`.
+Set \`in_progress\` immediately when you start. Let the task's mode and its strategy decide where the finish line is — e.g. a planning mode ends with a written plan and \`awaiting_approval\`; an execution/bugfix mode ends with code shipped and verified and status \`done\`.
 
 ## 5. Awaiting approval
 
@@ -251,7 +368,7 @@ Use \`awaiting_approval\` when you've written a plan and want the user to OK it.
 
 ## 6. Blocking
 
-Use \`blocked\` when you can't proceed without user input (ambiguous requirement, missing secret, destructive choice). Write the question into \`clarification.md\` via \`append_to_file\`.
+Use \`blocked\` when you can't proceed without user input (ambiguous requirement, missing secret, destructive choice). Write the question into \`clarification.md\` via ${clarificationCall}.
 
 ## 7. Use the tool whenever it would help
 
@@ -260,17 +377,7 @@ Concrete cases:
 - Filed a question for the user → set parent \`blocked\` and write \`clarification.md\`.
 - Finished a sub-step → don't update partially; finish the *task*, then update.
 
-## 8. Reports
-
-When \`meta.generate_report = true\`, write \`report.md\` with:
-- One-sentence summary of what changed (or didn't).
-- Files touched.
-- Verification: tests run, build passed, browser tested.
-- Follow-ups (filed as new tasks if actionable).
-
-Don't paste large code blocks. Don't recap the conversation.
-
-## 9. File layout
+## 8. File layout
 
 \`\`\`
 tasks/
@@ -280,31 +387,14 @@ tasks/
     context.md
     plan.md
     clarification.md
-    report.md
     <anything>.md
 \`\`\`
 
-## 10. Don't fight the user
+## 9. Don't fight the user
 
 If the user manually edits a task, status, or meta — assume they meant it. Don't re-flip. Re-read before reacting.
 
-## MCP surface
-
-\`\`\`
-list_tasks(filter)
-get_task(id)
-create_task({title, ...})
-update_status(id, status)
-update_meta(id, patch)
-append_to_file(id, filename, content)
-create_file(id, filename)
-rename_file(id, old, new)
-delete_file(id, filename)
-list_modes()
-list_agents()
-register_agent({name, provider, id?})
-unregister_agent(id)
-\`\`\`
+${surfaceBlock}
 `;
 }
 
@@ -417,6 +507,8 @@ function printInitHelp(): void {
       "Options:",
       "  --name <name>        project name (shown in the sidebar; default: folder name)",
       "  --tasks-dir <path>   directory to store tasks (default: .taskdir/tasks)",
+      "  --interface <which>  how agents talk to taskdir: mcp (default) or cli",
+      "  --cli                shorthand for --interface cli",
       "  --skills <list>      comma-separated skills to install: claude,codex (or 'none')",
       "  --mcp <list>         comma-separated MCP registrations: claude,cursor (or 'none')",
       "  -y, --yes            accept defaults; do not prompt",
@@ -502,7 +594,25 @@ export async function runInit(argv: string[]): Promise<void> {
     ? tasksDirInput
     : path.relative(root, tasksDirAbs).split(path.sep).join("/") || ".";
 
-  // 3. skills selection (default: both on)
+  // 3. agent interface preference: MCP tools or the taskdir CLI. This drives
+  // both the skill wording and whether we register an MCP server below.
+  let iface: AgentInterface;
+  if (args.iface) {
+    iface = args.iface;
+  } else if (args.yes) {
+    iface = "mcp";
+  } else {
+    iface = await promptSingleSelect(
+      "how should agents talk to taskdir? (↑/↓ to move, enter to confirm):",
+      [
+        { id: "mcp", label: "MCP", hint: "register taskdir as an MCP server; skill uses MCP tool calls" },
+        { id: "cli", label: "CLI", hint: "agents shell out to `taskdir <tool>`; no MCP registration" },
+      ] as const,
+      "mcp",
+    );
+  }
+
+  // 4. skills selection (default: both on)
   const defaultSkills = new Set<SkillTarget>(["claude", "codex"]);
   let skills: Set<SkillTarget>;
   if (args.skills) {
@@ -517,10 +627,13 @@ export async function runInit(argv: string[]): Promise<void> {
     );
   }
 
-  // 4. MCP registration (project-scoped; default: both on)
+  // 5. MCP registration (project-scoped; default: both on). Skipped entirely
+  // when the user chose the CLI interface — they aren't using MCP.
   const defaultMcp = new Set<McpTarget>(["claude", "cursor"]);
   let mcpTargets: Set<McpTarget>;
-  if (args.mcp) {
+  if (iface === "cli") {
+    mcpTargets = new Set<McpTarget>();
+  } else if (args.mcp) {
     mcpTargets = args.mcp;
   } else if (args.yes) {
     mcpTargets = defaultMcp;
@@ -572,8 +685,8 @@ export async function runInit(argv: string[]): Promise<void> {
   const ignoreLine = gitignoreLineFor(root, tasksDirAbs);
   const gitignoreResult = await ensureGitignoreEntry(root, ignoreLine);
 
-  // 5. write skill files for each selected agent
-  const skillBody = buildSkillContent(projectName || folderName);
+  // 6. write skill files for each selected agent (wording matches the interface)
+  const skillBody = buildSkillContent(projectName || folderName, iface);
   const skillResults: Array<{ opt: SkillOption; result: "written" | "existed" }> = [];
   for (const opt of SKILL_OPTIONS) {
     if (!skills.has(opt.id)) continue;
@@ -581,7 +694,7 @@ export async function runInit(argv: string[]): Promise<void> {
     skillResults.push({ opt, result });
   }
 
-  // 6. write MCP config entries
+  // 7. write MCP config entries (none when the CLI interface was chosen)
   const mcpEntry: McpEntry = { command: "taskdir", args: ["mcp"] };
   const mcpResults: Array<{
     opt: McpOption;
@@ -622,6 +735,13 @@ export async function runInit(argv: string[]): Promise<void> {
     process.stdout.write(
       "restart your agent (Claude Code, Cursor) to pick up the new MCP server\n",
     );
+  }
+  if (iface === "cli") {
+    process.stdout.write(
+      "agent interface: CLI — skills tell agents to run `taskdir <tool>`; no MCP server registered\n",
+    );
+  } else {
+    process.stdout.write("agent interface: MCP\n");
   }
 }
 
@@ -664,6 +784,207 @@ export async function runMcp(): Promise<void> {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const resp = await handleRpc(req as any);
     if (resp !== null) writeMcp(resp);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// task tools (CLI mirror of the MCP tool surface)
+// ---------------------------------------------------------------------------
+//
+// Every MCP tool is also reachable from the shell as `taskdir <tool> [options]`.
+// The command surface is derived from the same TOOLS schema the MCP server
+// exposes, so the two never drift — adding an MCP tool adds a CLI command for
+// free. The MCP server itself is untouched.
+
+interface ToolProp {
+  type?: string;
+  enum?: readonly string[];
+  items?: { type?: string };
+  description?: string;
+}
+
+interface ToolSchema {
+  name: string;
+  description: string;
+  inputSchema: {
+    properties?: Record<string, ToolProp>;
+    required?: readonly string[];
+  };
+}
+
+// Kept in sync with src/lib/mcp/tools.ts. Used by the top-level dispatcher to
+// recognise a tool command without eagerly loading the tools module.
+export const TASK_TOOL_NAMES = [
+  "list_tasks",
+  "get_task",
+  "create_task",
+  "update_status",
+  "update_meta",
+  "append_to_file",
+  "create_file",
+  "rename_file",
+  "delete_file",
+  "list_modes",
+  "list_agents",
+  "register_agent",
+  "unregister_agent",
+] as const;
+
+export function isTaskToolCommand(command: string): boolean {
+  return (TASK_TOOL_NAMES as readonly string[]).includes(command.replace(/-/g, "_"));
+}
+
+function printTaskToolsHelp(tools: readonly ToolSchema[]): void {
+  const width = Math.max(...tools.map((t) => t.name.length));
+  const lines = [
+    "Usage: taskdir <tool> [options]",
+    "",
+    "Run any taskdir tool from the shell — the same surface exposed over MCP.",
+    "Tool and option names match the MCP tools exactly.",
+    "",
+    "Tools:",
+    ...tools.map((t) => `  ${t.name.padEnd(width)}  ${t.description}`),
+    "",
+    "Options are `--key value` or `--key=value`. Array options (e.g. --tags)",
+    "take a comma-separated list or may be repeated. Required fields may also be",
+    "passed positionally, in order — e.g. `taskdir update_status 0001 done`.",
+    "",
+    "Run `taskdir <tool> --help` for a single tool's options.",
+    "",
+  ];
+  process.stdout.write(lines.join("\n"));
+}
+
+function printToolHelp(tool: ToolSchema): void {
+  const props = tool.inputSchema.properties ?? {};
+  const required = new Set(tool.inputSchema.required ?? []);
+  const lines = [`Usage: taskdir ${tool.name} [options]`, "", tool.description, ""];
+  const entries = Object.entries(props);
+  if (entries.length === 0) {
+    lines.push("(no options)", "");
+  } else {
+    const labelFor = (key: string, p: ToolProp) => {
+      const arg =
+        p.type === "array"
+          ? "<a,b,…>"
+          : p.type === "boolean"
+            ? "<true|false>"
+            : "<value>";
+      return `--${key} ${arg}`;
+    };
+    const width = Math.max(...entries.map(([k, p]) => labelFor(k, p).length));
+    lines.push("Options:");
+    for (const [key, p] of entries) {
+      const req = required.has(key) ? "(required) " : "";
+      const note = p.enum ? `one of: ${p.enum.join(", ")}` : (p.description ?? "");
+      lines.push(`  ${labelFor(key, p).padEnd(width)}  ${req}${note}`.trimEnd());
+    }
+    lines.push("");
+  }
+  process.stdout.write(lines.join("\n"));
+}
+
+export async function runTaskCli(argv: string[]): Promise<void> {
+  const { callTool, TOOLS } = await import("../src/lib/mcp/tools.ts");
+  const tools = TOOLS as readonly ToolSchema[];
+
+  const rawName = argv[0];
+  if (!rawName || rawName === "--help" || rawName === "-h" || rawName === "help") {
+    printTaskToolsHelp(tools);
+    return;
+  }
+
+  const name = rawName.replace(/-/g, "_");
+  const tool = tools.find((t) => t.name === name);
+  if (!tool) {
+    process.stderr.write(`taskdir: unknown tool '${rawName}'\n`);
+    printTaskToolsHelp(tools);
+    process.exit(1);
+    return;
+  }
+
+  const rest = argv.slice(1);
+  if (rest.includes("--help") || rest.includes("-h")) {
+    printToolHelp(tool);
+    return;
+  }
+
+  const props = tool.inputSchema.properties ?? {};
+  const required = tool.inputSchema.required ?? [];
+  const args: Record<string, unknown> = {};
+  const positionals: string[] = [];
+
+  const setArg = (key: string, value: string) => {
+    const prop = props[key];
+    if (!prop) throw new Error(`unknown option --${key} for ${tool.name}`);
+    if (prop.type === "array") {
+      const items = value.split(",").map((s) => s.trim()).filter(Boolean);
+      const prev = (args[key] as string[] | undefined) ?? [];
+      args[key] = [...prev, ...items];
+    } else if (prop.type === "boolean") {
+      args[key] = !["false", "0", "no", "off"].includes(value.toLowerCase());
+    } else {
+      args[key] = value;
+    }
+  };
+
+  try {
+    for (let i = 0; i < rest.length; i++) {
+      const tok = rest[i];
+      if (tok.startsWith("--")) {
+        const body = tok.slice(2);
+        const eq = body.indexOf("=");
+        if (eq >= 0) {
+          setArg(body.slice(0, eq), body.slice(eq + 1));
+          continue;
+        }
+        const prop = props[body];
+        if (prop?.type === "boolean") {
+          const next = rest[i + 1];
+          if (next === "true" || next === "false") {
+            setArg(body, next);
+            i++;
+          } else {
+            setArg(body, "true");
+          }
+        } else {
+          const val = rest[++i];
+          if (val === undefined) throw new Error(`--${body} needs a value`);
+          setArg(body, val);
+        }
+      } else {
+        positionals.push(tok);
+      }
+    }
+
+    // Leftover positionals fill still-unset required fields, in declared order.
+    let pi = 0;
+    for (const key of required) {
+      if (args[key] === undefined && pi < positionals.length) {
+        setArg(key, positionals[pi++]);
+      }
+    }
+    if (pi < positionals.length) {
+      throw new Error(`unexpected argument: ${positionals[pi]}`);
+    }
+
+    const missing = required.filter((k) => args[k] === undefined);
+    if (missing.length > 0) {
+      throw new Error(
+        `missing required option(s): ${missing.map((m) => `--${m}`).join(", ")}`,
+      );
+    }
+
+    const result = (await callTool(tool.name, args)) as {
+      content: { type: string; text: string }[];
+    };
+    const out = result.content.map((c) => c.text).join("\n");
+    process.stdout.write(out.endsWith("\n") ? out : out + "\n");
+  } catch (e) {
+    process.stderr.write(
+      `taskdir ${tool.name}: ${e instanceof Error ? e.message : String(e)}\n`,
+    );
+    process.exit(1);
   }
 }
 

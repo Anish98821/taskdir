@@ -82,16 +82,16 @@ describe("modes config store", () => {
 describe("strategies", () => {
   it("writes, reads, and deletes a mode strategy", async () => {
     const root = await useTempProjectRoot();
-    await writeStrategy("plan_only", "Draft a plan, then stop.");
-    assert.equal(await readStrategy("plan_only"), "Draft a plan, then stop.");
+    await writeStrategy("plan", "Draft a plan, then stop.");
+    assert.equal(await readStrategy("plan"), "Draft a plan, then stop.");
 
     const bundle = await readModesWithStrategies();
-    assert.equal(bundle.strategies.plan_only, "Draft a plan, then stop.");
+    assert.equal(bundle.strategies.plan, "Draft a plan, then stop.");
 
     // Writing empty content removes the strategy file.
-    await writeStrategy("plan_only", "   ");
-    assert.equal(await readStrategy("plan_only"), "");
-    await assert.rejects(readFile(join(root, ".taskdir", "strategies", "plan_only.md")));
+    await writeStrategy("plan", "   ");
+    assert.equal(await readStrategy("plan"), "");
+    await assert.rejects(readFile(join(root, ".taskdir", "strategies", "plan.md")));
   });
 
   it("rejects a strategy id that isn't a valid mode id", async () => {

@@ -88,6 +88,25 @@ TASKDIR_TASKS_DIR=C:\Path\To\Project\.taskdir\tasks
 
 The MCP server exposes task listing, creation, status updates, metadata updates, and markdown file operations.
 
+## Use Taskdir From The Shell
+
+Every MCP tool is also a plain `taskdir` subcommand — no MCP client required. The
+command surface is derived from the same schema the MCP server uses, so the two
+never drift.
+
+```bash
+taskdir tools                                    # list every tool
+taskdir create_task --title "Fix login" --mode bugfix
+taskdir list_tasks --status in_progress
+taskdir update_status 0001 done                  # required fields can be positional
+taskdir register_agent --name "Codex" --provider openai
+taskdir list_agents
+taskdir <tool> --help                            # options for any one tool
+```
+
+Option names match the tool fields. This covers the full surface: tasks, files,
+modes, and agent registration.
+
 ## Create A Task
 
 In the web UI:
@@ -95,9 +114,8 @@ In the web UI:
 1. Click the new task control.
 2. Enter a title.
 3. Pick priority and workflow mode.
-4. Leave `report` checked if you want the agent to produce a report.
-5. Add optional context in `context.md`.
-6. Save.
+4. Add optional context in `context.md`.
+5. Save.
 
 Quick-add in the task list creates a task with defaults.
 
@@ -108,9 +126,8 @@ Through MCP, call `create_task` with:
   "title": "Fix login redirect",
   "context": "Steps and expectations here",
   "priority": "med",
-  "mode": "plan_and_execute",
-  "tags": ["frontend"],
-  "generate_report": true
+  "mode": "bugfix",
+  "tags": ["frontend"]
 }
 ```
 
@@ -126,17 +143,14 @@ Through MCP, call `create_task` with:
 
 When a task is blocked, open it in the UI, read the clarification prompt, answer in the provided box, and submit. Taskdir appends your answer to `clarification.md` and returns the task to `in_progress`.
 
-Unread reports show as report notifications. Mark one report read from task detail or clear report notifications from the drawer.
-
 ## Task Files
 
 Common files:
 
 - `context.md`: initial task context
 - `clarification.md`: questions and answers when blocked
-- `report.md`: completion notes
 
-You can create additional markdown files from the file tab menu.
+You can create additional markdown files (notes, a `report.md`, …) from the file tab menu.
 
 The file editor supports edit and preview modes. Saves use mtime conflict detection; if a file changed on disk, Taskdir asks whether to reload or overwrite.
 
@@ -152,7 +166,6 @@ The notification drawer shows:
 
 - blocked tasks
 - tasks awaiting approval
-- unread reports
 
 ## Maintenance
 

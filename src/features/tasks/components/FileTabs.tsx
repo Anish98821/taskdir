@@ -13,6 +13,7 @@ import {
   MoreHorizontal,
   Pencil,
   Plus,
+  ScrollText,
   Trash2,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -39,7 +40,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { InProgressDots } from "@/features/tasks/components/InProgressDots";
-import { CANONICAL_FILES, type TaskFile } from "@/lib/task-types";
+import { ADDABLE_FILES, type TaskFile } from "@/lib/task-types";
 import { cn } from "@/lib/utils";
 
 interface Props {
@@ -50,6 +51,7 @@ interface Props {
 
 const FILE_ICON: Record<string, LucideIcon> = {
   "context.md": ClipboardList,
+  "instructions.md": ScrollText,
   "plan.md": ClipboardList,
   "clarification.md": HelpCircle,
   "report.md": FileCheck2,
@@ -94,7 +96,7 @@ export function FileTabs({ taskId, files, activeName }: Props) {
   };
 
   const existingNames = new Set(files.map((f) => f.name));
-  const missingCanonical = CANONICAL_FILES.filter((n) => !existingNames.has(n));
+  const missingAddable = ADDABLE_FILES.filter((n) => !existingNames.has(n));
 
   const submitRename = (oldName: string, raw: string) => {
     const newN = raw.trim();
@@ -216,7 +218,7 @@ export function FileTabs({ taskId, files, activeName }: Props) {
             )}
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start" className="font-mono">
-            {missingCanonical.map((n) => {
+            {missingAddable.map((n) => {
               const Icon = iconFor(n);
               return (
                 <DropdownMenuItem

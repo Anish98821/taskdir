@@ -14,6 +14,7 @@ import {
   type TaskSummary,
 } from "./task-types.ts";
 import { fireHooks } from "./hooks.ts";
+import { DEFAULT_MODE_ID } from "./modes-types.ts";
 import { isConfiguredStatus } from "./statuses.ts";
 import { parseFolderName, slugify, type ParsedFolder } from "./tasks/identity.ts";
 import { parseMetaToml, stringifyMetaToml } from "./tasks/meta-toml.ts";
@@ -57,25 +58,14 @@ export function invalidateTaskIndex(): void {
 async function readSummary(dir: string, parsed: ParsedFolder): Promise<TaskSummary | null> {
   const taskPath = path.join(dir, parsed.folder);
   try {
-    const [statusRaw, metaRaw, reportStat, entries] = await Promise.all([
+    const [statusRaw, metaRaw, entries] = await Promise.all([
       fs.readFile(path.join(taskPath, "status"), "utf8"),
       fs.readFile(path.join(taskPath, "meta.toml"), "utf8"),
-      fs.stat(path.join(taskPath, "report.md")).catch(() => null),
       fs.readdir(taskPath, { withFileTypes: true }).catch(() => []),
     ]);
     const status = statusRaw.trim();
     if (!isStatus(status)) return null;
     const meta = parseMetaToml(metaRaw);
-    const hasReportContent =
-      reportStat !== null && reportStat.isFile() && reportStat.size > 0;
-    const seenAt = meta.report_seen_at
-      ? Date.parse(meta.report_seen_at)
-      : null;
-    const hasReport =
-      hasReportContent &&
-      (seenAt === null ||
-        Number.isNaN(seenAt) ||
-        reportStat.mtimeMs > seenAt);
     const fileStats = await Promise.all(
       entries
         .filter((e) => e.isFile() && !e.name.startsWith("."))
@@ -93,7 +83,6 @@ async function readSummary(dir: string, parsed: ParsedFolder): Promise<TaskSumma
       folder: parsed.folder,
       status,
       meta,
-      hasReport,
       lastActiveMs,
     };
   } catch {
@@ -189,7 +178,6 @@ export interface CreateTaskInput {
   priority?: Priority;
   mode?: Mode;
   tags?: string[];
-  generate_report?: boolean;
   agent?: string;
 }
 
@@ -204,9 +192,8 @@ export async function createTask(input: CreateTaskInput): Promise<TaskSummary> {
     title: input.title,
     created_at: new Date().toISOString(),
     priority: input.priority ?? "med",
-    mode: input.mode ?? "plan_and_execute",
+    mode: input.mode ?? DEFAULT_MODE_ID,
     tags: input.tags ?? [],
-    generate_report: input.generate_report ?? true,
     ...(input.agent?.trim() ? { agent: input.agent.trim() } : {}),
   };
   const status: Status = "pending";
@@ -226,7 +213,6 @@ export async function createTask(input: CreateTaskInput): Promise<TaskSummary> {
     folder,
     status,
     meta,
-    hasReport: false,
     lastActiveMs: Date.now(),
   };
 }
@@ -263,9 +249,7 @@ export interface MetaPatch {
   priority?: Priority;
   mode?: Mode;
   tags?: string[];
-  generate_report?: boolean;
   agent?: string | null;
-  report_seen_at?: string;
 }
 
 export async function updateMeta(id: string, patch: MetaPatch): Promise<TaskMeta> {
@@ -284,9 +268,6 @@ export async function updateMeta(id: string, patch: MetaPatch): Promise<TaskMeta
     ...(patch.title !== undefined ? { title: patch.title.trim() || current.title } : {}),
     ...(patch.priority !== undefined ? { priority: patch.priority } : {}),
     ...(patch.mode !== undefined ? { mode: patch.mode } : {}),
-    ...(patch.generate_report !== undefined
-      ? { generate_report: patch.generate_report }
-      : {}),
     ...(patch.agent !== undefined
       ? patch.agent?.trim()
         ? { agent: patch.agent.trim() }
@@ -295,18 +276,11 @@ export async function updateMeta(id: string, patch: MetaPatch): Promise<TaskMeta
     ...(patch.tags !== undefined
       ? { tags: patch.tags.map((t) => t.trim()).filter(Boolean) }
       : {}),
-    ...(patch.report_seen_at !== undefined
-      ? { report_seen_at: patch.report_seen_at }
-      : {}),
   };
   if (next.agent === undefined) delete next.agent;
   await fs.writeFile(path.join(taskPath, "meta.toml"), stringifyMetaToml(next), "utf8");
   invalidateTaskIndex();
-  // Skip firing for purely-internal writes (e.g. marking a report as read).
-  const meaningful = Object.keys(patch).some((k) => k !== "report_seen_at");
-  if (meaningful) {
-    void fireHooks("task.updated", { id, title: next.title, priority: next.priority, mode: next.mode });
-  }
+  void fireHooks("task.updated", { id, title: next.title, priority: next.priority, mode: next.mode });
   return next;
 }
 

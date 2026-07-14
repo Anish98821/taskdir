@@ -70,12 +70,7 @@ When you start a task, immediately set its status to `in_progress` via `update_s
 
 **Modes are project-defined.** Call `list_modes` to see them (id, label). A task's mode is stored in `meta.toml`. If the mode has a **strategy**, `get_task` appends it under `## strategy for mode: <id>` — treat that as instructions for how to approach this class of task and follow it.
 
-When you finish, set status to `done`. The "finish line" is:
-- For `mode = plan_and_execute` or `fast_execute`: code changes shipped and verified.
-- For `mode = plan_only`: a plan written to `plan.md`, then `awaiting_approval`.
-- For `mode = report_only`: a `report.md` written.
-
-If `meta.generate_report = true`, write `report.md` before flipping to `done`. The report belongs in the task folder, not in the response.
+When you finish, set status to `done`. The "finish line" depends on the task's mode and its strategy — e.g. a planning mode ends with a plan written to `plan.md` and status `awaiting_approval`; an execution or bugfix mode ends with code changes shipped and verified and status `done`. Follow the mode's strategy if it defines one.
 
 ## 5. Awaiting approval
 
@@ -98,33 +93,22 @@ Don't go heads-down on your own todo list — the user has a task tracker for a 
 - You finished a sub-step → don't update status partially; finish the *task*, then update.
 - Status changes are not "free" — only emit them at real boundaries.
 
-## 8. Reports
-
-When `meta.generate_report = true`, write a `report.md` in the task folder. A good report has:
-- One-sentence summary of what changed (or didn't).
-- Files touched.
-- Verification: tests run, build passed, browser tested.
-- Anything the user should follow up on (filed as new tasks if it's actionable).
-
-Don't paste large code blocks. Don't recap the conversation. Don't write marketing copy.
-
-## 9. File layout
+## 8. File layout
 
 ```
 tasks/
   <NNNN>-<slug>/
-    meta.toml        # title, priority, mode, tags, generate_report, agent
+    meta.toml        # title, priority, mode, tags, agent
     status           # a configured status id, single line
     context.md       # optional, written at creation time
     plan.md          # optional, your plan for plan-modes
     clarification.md # optional, questions for the user
-    report.md        # required if generate_report = true
-    <anything>.md    # extra notes/scratch
+    <anything>.md    # extra notes/scratch (e.g. a report.md if useful)
 ```
 
 Folder name is `<padded-id>-<slug>` — you don't pick this, `create_task` does.
 
-## 10. Don't fight the user
+## 9. Don't fight the user
 
 If the user manually edits a task, status, or meta — assume they meant it. Don't re-flip status. Don't "correct" their title. Re-read before reacting.
 
@@ -137,7 +121,7 @@ list_tasks(filter)            # status, tag, priority — optional
 get_task(id)                  # concatenated markdown + meta
 create_task({title, ...})     # spawn a child
 update_status(id, status)
-update_meta(id, patch)        # title/priority/mode/tags/generate_report/agent
+update_meta(id, patch)        # title/priority/mode/tags/agent
 append_to_file(id, filename, content)
 create_file(id, filename)
 rename_file(id, old, new)

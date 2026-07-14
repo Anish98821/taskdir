@@ -12,9 +12,8 @@ Filesystem-backed task tracker for AI agents. MCP tools + a small web UI for the
 tasks/
   0042-add-auth/
     status              # pending | in_progress | awaiting_approval | blocked | done
-    meta.toml           # title, created_at, priority, mode, tags, generate_report, agent
+    meta.toml           # title, created_at, priority, mode, tags, agent
     context.md          # optional
-    report.md
     clarification.md    # present when status=blocked
 ```
 
@@ -24,9 +23,9 @@ Tasks live as folders on disk. `git diff`, `cp -r`, `grep -r` all work. Agents c
 
 - `list_tasks(status?, tag?, priority?)`
 - `get_task(id)` — returns all files concatenated
-- `create_task(title, context?, priority?, mode?, tags?, generate_report?, agent?)`
+- `create_task(title, context?, priority?, mode?, tags?, agent?)`
 - `update_status(id, status)`
-- `update_meta(id, title?, priority?, mode?, tags?, generate_report?, agent?)`
+- `update_meta(id, title?, priority?, mode?, tags?, agent?)`
 - `append_to_file(id, filename, content)`
 - `create_file(id, filename)`
 - `rename_file(id, old_name, new_name)`
@@ -35,6 +34,23 @@ Tasks live as folders on disk. `git diff`, `cp -r`, `grep -r` all work. Agents c
 - `list_agents()`
 - `register_agent(name, provider, id?)`
 - `unregister_agent(id)`
+
+## CLI tools
+
+Every tool above is also a shell command — the same surface, no MCP client
+required:
+
+```bash
+taskdir tools                              # list the commands
+taskdir create_task --title "Fix login" --mode bugfix --tags auth,frontend
+taskdir list_tasks --status in_progress
+taskdir update_status 0001 done            # required fields can be positional
+taskdir get_task 0001
+```
+
+Option names match the tool fields; run `taskdir <tool> --help` for any one.
+The commands are derived from the same schema the MCP server uses, so they never
+drift.
 
 ## Web UI
 
@@ -46,10 +62,9 @@ Tasks live as folders on disk. `git diff`, `cp -r`, `grep -r` all work. Agents c
 
 ## Modes & strategies
 
-Every task has a **mode** describing its class of work. The four built-ins
-(`plan_only`, `plan_and_execute`, `fast_execute`, `report_only`) are just
-defaults — rename them, swap icons, or add your own in the web UI (Settings →
-modes) or `.taskdir/modes.toml`:
+Every task has a **mode** describing its class of work. The three built-ins
+(`plan`, `bugfix`, `research`) are just defaults — rename them, swap icons, or
+add your own in the web UI (Settings → modes) or `.taskdir/modes.toml`:
 
 ```toml
 [[mode]]
@@ -105,8 +120,46 @@ Events: `task.created`, `task.status_changed`, `task.updated`, `task.deleted`,
   `TASKDIR_*` env vars for each scalar payload field (e.g. `TASKDIR_ID`).
 - **webhook** hooks receive a JSON body `{ event, timestamp, data }`.
 
+A command hook can point at a command/file to run, or carry **inline code**
+directly. In the web UI (Settings → hooks) toggle "inline code" for a proper
+code editor; on disk it's a `script` block. The engine writes the script to a
+temp file and runs it, honoring a shebang (`#!/usr/bin/env node`, `#!/bin/bash`,
+…) cross-platform, or falling back to the platform shell:
+
+```toml
+[[hook]]
+event = "task.created"
+type = "command"
+script = '''
+#!/usr/bin/env node
+console.log(`new task: ${process.env.TASKDIR_ID}`)
+'''
+```
+
+Toggle a hook off without deleting it via the power button in Settings → hooks,
+or add `enabled = false` to its table. Hooks fire unless explicitly disabled:
+
+```toml
+[[hook]]
+event = "*"
+type = "webhook"
+url = "https://example.com/taskdir"
+enabled = false                  # keeps the config, stops it firing
+```
+
 Firing is best-effort and non-blocking — a slow or failing hook never blocks the
 operation that triggered it (10s timeout).
+
+### Example: auto-run an agent on new tasks
+
+This repo ships a `task.created` hook (`.taskdir/hooks.toml`) that launches a
+Claude Code CLI in the background to work each newly-created task, via
+`scripts/taskdir-on-create.mjs`. Because the hook's child is killed after 10s,
+the script spawns Claude **detached** and returns immediately; it also stamps
+`TASKDIR_AUTORUN=1` into the child so subtasks the agent creates don't recurse.
+Knobs: `TASKDIR_AUTORUN_DISABLE=1` to turn it off, `TASKDIR_CLAUDE_ARGS` to
+control autonomy (e.g. `--dangerously-skip-permissions` for a fully unattended
+run).
 
 ## Stack
 
@@ -152,10 +205,15 @@ A single `taskdir` executable is installed by the npm package (and by the SEA bu
 ```
 taskdir init [options]         initialise .taskdir/ in the current directory
   --tasks-dir <path>           tasks folder (default: .taskdir/tasks)
+  --interface <mcp|cli>        how agents talk to taskdir (default: mcp; asked interactively)
+  --cli                        shorthand for --interface cli
   -y, --yes                    skip prompts
   -h, --help
 
 taskdir mcp                    run the stdio MCP server for the current project
+
+taskdir tools                  list the task tools runnable from the shell
+taskdir <tool> [options]       run any MCP tool directly (see `taskdir tools`)
 
 taskdir web [options]          launch the web UI (auto-opens the browser)
   -p, --port <n>               default 3000, auto-increments if busy

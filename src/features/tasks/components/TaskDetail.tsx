@@ -5,7 +5,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { ApprovePlanBanner } from "@/features/tasks/components/ApprovePlanBanner";
 import { ClarificationSubmitButton } from "@/features/tasks/components/ClarificationSubmitButton";
 import { DeleteTaskButton } from "@/features/tasks/components/DeleteTaskButton";
-import { MarkReportReadButton } from "@/features/tasks/components/MarkReportReadButton";
 import { FileEditor } from "@/features/tasks/components/FileEditor";
 import { FileTabs } from "@/features/tasks/components/FileTabs";
 import { MetaEditor } from "@/features/tasks/components/MetaEditor";
@@ -58,7 +57,6 @@ export function TaskDetail({
             />
           </div>
           <div className="flex items-center gap-2">
-            {task.hasReport && <MarkReportReadButton taskId={task.id} />}
             <DeleteTaskButton taskId={task.id} taskTitle={task.meta.title} />
             <Link
               href={closeHref}

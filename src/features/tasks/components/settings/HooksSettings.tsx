@@ -3,8 +3,12 @@
 import { useOptimistic, useState, useTransition } from "react";
 import {
   ChevronDown,
+  Code2,
+  FileCode,
   Pencil,
   Plus,
+  Power,
+  PowerOff,
   Terminal,
   Trash2,
   Webhook,
@@ -22,10 +26,13 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { PickerDropdown } from "@/components/ui/picker-dropdown";
+import { CodeEditor } from "@/features/tasks/components/CodeEditor";
 import { InProgressDots } from "@/features/tasks/components/InProgressDots";
 import {
   HOOK_EVENT_CHOICES,
   HOOK_TYPES,
+  hookCommandSummary,
+  isHookEnabled,
   type Hook,
   type HookType,
   type HooksConfig,
@@ -47,6 +54,9 @@ type DialogState =
   | { kind: "create" }
   | { kind: "edit"; index: number }
   | null;
+
+type CmdMode = "file" | "inline";
+const CMD_MODES: readonly CmdMode[] = ["file", "inline"];
 
 function eventLabel(event: Hook["event"]): string {
   return event === "*" ? "every event" : event;
@@ -75,6 +85,20 @@ export function HooksSettings({ config }: Props) {
       persist([...optimistic, hook]);
     }
     setDialog(null);
+  };
+
+  const toggleEnabled = (index: number) => {
+    persist(
+      optimistic.map((h, i) => {
+        if (i !== index) return h;
+        // Disabling sets an explicit flag; re-enabling drops it back to the
+        // default (undefined) so we don't litter configs with enabled = true.
+        const next: Hook = { ...h };
+        if (isHookEnabled(h)) next.enabled = false;
+        else delete next.enabled;
+        return next;
+      }),
+    );
   };
 
   const confirmDelete = () => {
@@ -113,13 +137,24 @@ export function HooksSettings({ config }: Props) {
         <SettingsList>
           {optimistic.map((hook, i) => {
             const TypeIcon = hook.type === "command" ? Terminal : Webhook;
-            const target = hook.type === "command" ? hook.command : hook.url;
+            const target = hookCommandSummary(hook);
+            const enabled = isHookEnabled(hook);
             return (
               <SettingsItem key={i}>
-                <span className="flex size-8 shrink-0 items-center justify-center rounded-md border border-border text-foreground">
+                <span
+                  className={cn(
+                    "flex size-8 shrink-0 items-center justify-center rounded-md border border-border text-foreground",
+                    !enabled && "opacity-50",
+                  )}
+                >
                   <TypeIcon className="size-4" aria-hidden />
                 </span>
-                <div className="flex min-w-0 flex-1 flex-col gap-1">
+                <div
+                  className={cn(
+                    "flex min-w-0 flex-1 flex-col gap-1",
+                    !enabled && "opacity-50",
+                  )}
+                >
                   <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
                     {hook.name && (
                       <span className="truncate text-sm text-foreground">
@@ -129,9 +164,14 @@ export function HooksSettings({ config }: Props) {
                     <Badge variant="outline" className="text-muted-foreground">
                       on {eventLabel(hook.event)}
                     </Badge>
+                    {!enabled && (
+                      <Badge variant="outline" className="text-muted-foreground">
+                        disabled
+                      </Badge>
+                    )}
                   </div>
                   <span className="truncate font-mono text-xs text-muted-foreground">
-                    {target?.trim() || (
+                    {target.trim() || (
                       <span className="italic opacity-60">
                         nothing configured
                       </span>
@@ -139,6 +179,16 @@ export function HooksSettings({ config }: Props) {
                   </span>
                 </div>
                 <div className="flex items-center gap-0.5">
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    disabled={pending}
+                    onClick={() => toggleEnabled(i)}
+                    aria-label={`${enabled ? "disable" : "enable"} hook ${i + 1}`}
+                    className="text-muted-foreground hover:text-foreground"
+                  >
+                    {enabled ? <Power /> : <PowerOff />}
+                  </Button>
                   <Button
                     variant="ghost"
                     size="icon-sm"
@@ -209,17 +259,31 @@ function HookDialog({
   const [event, setEvent] = useState<Hook["event"]>(initial?.event ?? "*");
   const [type, setType] = useState<HookType>(initial?.type ?? "command");
   const [command, setCommand] = useState(initial?.command ?? "");
+  const [script, setScript] = useState(initial?.script ?? "");
   const [url, setUrl] = useState(initial?.url ?? "");
+  // For command hooks, choose between pointing at a file/command to run and
+  // writing inline code. Seed from whichever the hook already carries.
+  const [cmdMode, setCmdMode] = useState<CmdMode>(
+    initial?.script?.trim() ? "inline" : "file",
+  );
 
-  const target = type === "command" ? command : url;
+  const target =
+    type === "webhook" ? url : cmdMode === "inline" ? script : command;
   const canSave = target.trim().length > 0 && !pending;
 
   const build = (): Hook => {
     const hook: Hook = { event, type };
     const trimmedName = name.trim();
     if (trimmedName) hook.name = trimmedName;
-    if (type === "command") hook.command = command.trim();
-    else hook.url = url.trim();
+    if (type === "command") {
+      // Keep exactly one of script/command so the two modes never collide.
+      if (cmdMode === "inline") hook.script = script;
+      else hook.command = command.trim();
+    } else {
+      hook.url = url.trim();
+    }
+    // Editing shouldn't silently re-enable a disabled hook.
+    if (initial?.enabled === false) hook.enabled = false;
     return hook;
   };
 
@@ -299,16 +363,59 @@ function HookDialog({
           </div>
           {type === "command" ? (
             <FormField
-              label="command"
-              hint="runs with the event JSON on stdin and TASKDIR_* env vars."
+              label="run"
+              hint={
+                cmdMode === "inline"
+                  ? "inline code — add a shebang (e.g. #!/usr/bin/env node) or it runs in the platform shell."
+                  : "a shell command or path to a script. runs with the event JSON on stdin and TASKDIR_* env vars."
+              }
             >
-              <Input
-                value={command}
-                onChange={(e) => setCommand(e.currentTarget.value)}
-                disabled={pending}
-                placeholder='e.g. notify-send "$TASKDIR_EVENT"'
-                className="font-mono"
-              />
+              <div className="flex flex-col gap-2">
+                <div
+                  className="flex gap-1"
+                  role="radiogroup"
+                  aria-label="command source"
+                >
+                  {CMD_MODES.map((m) => {
+                    const ModeIcon = m === "file" ? FileCode : Code2;
+                    const selected = m === cmdMode;
+                    return (
+                      <button
+                        key={m}
+                        type="button"
+                        role="radio"
+                        aria-checked={selected}
+                        disabled={pending}
+                        onClick={() => setCmdMode(m)}
+                        className={cn(
+                          "inline-flex h-8 items-center gap-1.5 rounded-lg border px-2.5 text-sm transition-colors",
+                          selected
+                            ? "border-ring bg-muted text-foreground"
+                            : "border-border text-muted-foreground hover:border-muted-foreground/60 hover:text-foreground",
+                        )}
+                      >
+                        <ModeIcon className="size-3.5" aria-hidden />
+                        {m === "file" ? "command / file" : "inline code"}
+                      </button>
+                    );
+                  })}
+                </div>
+                {cmdMode === "inline" ? (
+                  <CodeEditor
+                    value={script}
+                    onChange={setScript}
+                    placeholder={"#!/usr/bin/env bash\nnotify-send \"$TASKDIR_EVENT\""}
+                  />
+                ) : (
+                  <Input
+                    value={command}
+                    onChange={(e) => setCommand(e.currentTarget.value)}
+                    disabled={pending}
+                    placeholder='e.g. notify-send "$TASKDIR_EVENT"'
+                    className="font-mono"
+                  />
+                )}
+              </div>
             </FormField>
           ) : (
             <FormField

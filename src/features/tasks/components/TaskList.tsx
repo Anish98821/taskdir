@@ -138,14 +138,6 @@ export function TaskList({ tasks, statuses }: Props) {
               </span>
               <PriorityBadge priority={t.meta.priority} className="w-fit justify-self-start" />
               <span className="flex w-full min-w-0 items-center gap-2 truncate text-foreground sm:w-auto">
-                {t.hasReport && (
-                  <span
-                    title="unread report"
-                    aria-label="unread report"
-                    className="inline-flex size-2 shrink-0 rounded-full bg-emerald-500"
-                  >
-                  </span>
-                )}
                 <span className="truncate">{t.meta.title}</span>
               </span>
               <span className="hidden truncate text-xs text-muted-foreground sm:inline">

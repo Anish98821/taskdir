@@ -216,14 +216,12 @@ describe("handleRpc", () => {
       priority: "high",
       mode: "plan_only",
       tags: ["mcp", "metadata"],
-      generate_report: false,
       agent: "codex",
     })).result)) as {
       title: string;
       priority: string;
       mode: string;
       tags: string[];
-      generate_report: boolean;
       agent: string;
     };
 
@@ -233,7 +231,6 @@ describe("handleRpc", () => {
         priority: meta.priority,
         mode: meta.mode,
         tags: meta.tags,
-        generate_report: meta.generate_report,
         agent: meta.agent,
       },
       {
@@ -241,7 +238,6 @@ describe("handleRpc", () => {
         priority: "high",
         mode: "plan_only",
         tags: ["mcp", "metadata"],
-        generate_report: false,
         agent: "codex",
       },
     );

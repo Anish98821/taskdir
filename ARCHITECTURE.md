@@ -31,7 +31,6 @@ tasks/
     meta.toml
     context.md
     clarification.md
-    report.md
 ```
 
 `status` contains one value:
@@ -46,16 +45,14 @@ pending | in_progress | awaiting_approval | blocked | done
 title = "Example"
 created_at = "2026-06-12T00:00:00.000Z"
 priority = "med"
-mode = "plan_and_execute"
+mode = "plan"
 tags = []
-generate_report = true
 agent = "codex"
-report_seen_at = "2026-06-12T00:00:00.000Z"
 ```
 
-`agent` and `report_seen_at` are optional. `agent` scopes a task to a specific registered agent id; when absent, any agent may pick it up. `report_seen_at` only appears after reports are marked read. `generate_report` defaults to true when absent, so older tasks remain valid.
+`agent` is optional: it scopes a task to a specific registered agent id; when absent, any agent may pick it up. Unknown keys left over from older tasks (e.g. `generate_report`, `report_seen_at`) are simply ignored on read.
 
-Canonical markdown files are ordered as `context.md`, `clarification.md`, `report.md`, then custom markdown files alphabetically. Agents can still create other `*.md` files in a task folder.
+Canonical markdown files are ordered as `context.md`, `clarification.md`, then custom markdown files alphabetically. Agents can still create any other `*.md` files (including a `report.md`) in a task folder.
 
 ## Server-Side Task API
 
@@ -90,7 +87,7 @@ The app uses Next.js App Router. `src/app/page.tsx` is intentionally thin and de
 - `MetaEditor.tsx`: optimistic metadata editing
 - `FileTabs.tsx`: file tab controls and file operations
 - `FileEditor.tsx`: markdown edit/preview and conflict-aware save
-- `NotificationsDrawer.tsx`: blocked, approval, and unread-report notifications
+- `NotificationsDrawer.tsx`: blocked and approval notifications
 - `NewTaskDraft.tsx`: full task creation panel
 
 Server actions in `src/app/actions.ts` bridge client components to server-side mutations. They call the task service and then `refresh()` or `redirect()` as needed.
@@ -111,20 +108,21 @@ This lets the UI update when an agent edits task files outside the browser.
 
 ## MCP Surface
 
-There are two MCP entrypoints:
+There are three entrypoints over the same tool surface:
 
 - `bin/taskdir.ts mcp`: stdio MCP server for agents
 - `src/app/mcp/route.ts`: HTTP route using the same handler
+- `bin/taskdir.ts <tool>`: the same tools as plain CLI commands (see below)
 
-Both delegate to `src/lib/mcp-handler.ts`, which delegates tool schemas and dispatch to `src/lib/mcp/tools.ts`.
+The first two delegate to `src/lib/mcp-handler.ts`, which delegates tool schemas and dispatch to `src/lib/mcp/tools.ts`.
 
 Current tools:
 
 - `list_tasks(status?, tag?, priority?)`
 - `get_task(id)`
-- `create_task(title, context?, priority?, mode?, tags?, generate_report?, agent?)`
+- `create_task(title, context?, priority?, mode?, tags?, agent?)`
 - `update_status(id, status)`
-- `update_meta(id, title?, priority?, mode?, tags?, generate_report?, agent?)`
+- `update_meta(id, title?, priority?, mode?, tags?, agent?)`
 - `append_to_file(id, filename, content)`
 - `create_file(id, filename)`
 - `rename_file(id, old_name, new_name)`
@@ -132,6 +130,10 @@ Current tools:
 - `register_agent(name, provider, id?)`
 
 Tool output is plain text JSON or short acknowledgements so it stays easy for agents to consume.
+
+### CLI mirror
+
+`runTaskCli` in `bin/cli.ts` exposes every tool as a shell command: `taskdir <tool> [options]` (run `taskdir tools` for the list). It is a thin adapter — it derives its command surface, option names, types, and required fields directly from the same `TOOLS` schema, then calls `callTool(name, args)`. So the CLI and MCP never drift: adding an MCP tool adds a CLI command for free. Options are `--key value`/`--key=value`; array options take a comma list or repeat; required fields may be passed positionally in declared order (e.g. `taskdir update_status 0001 done`). The MCP server itself is unchanged by this.
 
 ## Initialization
 
@@ -141,6 +143,7 @@ Tool output is plain text JSON or short acknowledgements so it stays easy for ag
 - creates the configured task directory
 - creates `.taskdir/README.md` if missing
 - optionally appends the tasks directory to `.gitignore`
+- asks whether agents should talk to taskdir over **MCP** or via the **CLI** (`--interface`), then tailors the installed skill accordingly and, for MCP, registers the server in the selected client configs
 
 The default task directory is `.taskdir/tasks`, but `--tasks-dir` can point elsewhere.
 
@@ -150,9 +153,8 @@ Notifications are derived, not stored:
 
 - `blocked`: task status is `blocked`
 - `approval`: task status is `awaiting_approval`
-- `report`: `report.md` exists with content and is newer than `meta.report_seen_at`
 
-Clearing report notifications writes `report_seen_at`. Blocked and approval notifications clear only when the underlying status changes.
+Both clear only when the underlying status changes.
 
 ## Import Boundaries
 

@@ -83,7 +83,6 @@ describe("task service filesystem API", () => {
       priority: "low",
       mode: "plan_only",
       tags: ["trimmed", "tags"],
-      generate_report: true,
       agent: "claude",
     });
 
@@ -93,7 +92,6 @@ describe("task service filesystem API", () => {
       priority: "low",
       mode: "plan_only",
       tags: ["trimmed", "tags"],
-      generate_report: true,
       agent: "claude",
     });
     const clearedMeta = await updateMeta("0001", {
@@ -152,7 +150,6 @@ describe("task service filesystem API", () => {
     await createTask({ title: "Ordering", context: "ctx" });
     await createFile("0001", "zeta.md");
     await createFile("0001", "clarification.md");
-    await createFile("0001", "report.md");
     await createFile("0001", "alpha.md");
 
     const detail = await getTask("0001");
@@ -160,7 +157,6 @@ describe("task service filesystem API", () => {
     assert.deepEqual(detail.files.map((file) => file.name), [
       "context.md",
       "clarification.md",
-      "report.md",
       "alpha.md",
       "zeta.md",
     ]);

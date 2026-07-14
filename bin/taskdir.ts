@@ -10,7 +10,7 @@ import os from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 
-import { runInit, runMcp, runWeb } from "./cli.ts";
+import { isTaskToolCommand, runInit, runMcp, runTaskCli, runWeb } from "./cli.ts";
 
 const VERSION = "0.6.1";
 
@@ -26,8 +26,13 @@ function printHelp(): void {
       "  mcp            run the stdio MCP server for the current directory",
       "  web            launch the taskdir web UI",
       "  install        copy this exe into the user PATH",
+      "  tools          list the task tools runnable from the shell",
       "  help           show this help",
       "  version        print version",
+      "",
+      "Task tools (the MCP surface, from the shell):",
+      "  taskdir list_tasks | get_task | create_task | update_status | …",
+      "  run `taskdir tools` for the full list, `taskdir <tool> --help` for options.",
       "",
       "Run `taskdir <command> --help` for command-specific options.",
       "",
@@ -130,6 +135,8 @@ async function dispatch(argv: string[]): Promise<void> {
   if (command === "init") return runInit(rest);
   if (command === "mcp") return runMcp();
   if (command === "install") return runInstall();
+  if (command === "tools") return runTaskCli(rest);
+  if (isTaskToolCommand(command)) return runTaskCli(argv);
   if (command === "web") {
     const webDir = await bundleResolver.resolveWebDir();
     await runWeb(rest, {

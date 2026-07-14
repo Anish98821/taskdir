@@ -1,10 +1,10 @@
 import { afterEach, describe, it } from "node:test";
 import assert from "node:assert/strict";
 import http from "node:http";
-import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { fireHooks, parseHooksToml } from "./hooks.ts";
+import { fireHooks, parseHooksToml, stringifyHooksToml } from "./hooks.ts";
 
 const prevRoot = process.env.TASKDIR_PROJECT_ROOT;
 const roots: string[] = [];
@@ -88,6 +88,74 @@ type = "smoke-signal"
       { event: "*", type: "webhook", url: "https://example.com", name: "all" },
     ]);
   });
+
+  it("parses the enabled flag and defaults to enabled when absent", () => {
+    const config = parseHooksToml(`
+[[hook]]
+event = "task.created"
+type = "command"
+command = "echo off"
+enabled = false
+
+[[hook]]
+event = "task.created"
+type = "command"
+command = "echo on"
+enabled = true
+
+[[hook]]
+event = "task.created"
+type = "command"
+command = "echo default"
+`);
+    assert.deepEqual(config.hooks, [
+      { event: "task.created", type: "command", command: "echo off", enabled: false },
+      { event: "task.created", type: "command", command: "echo on" },
+      { event: "task.created", type: "command", command: "echo default" },
+    ]);
+  });
+
+  it("round-trips a disabled hook through stringify", () => {
+    const toml = stringifyHooksToml({
+      hooks: [
+        { event: "task.created", type: "command", command: "echo hi", enabled: false },
+      ],
+    });
+    assert.match(toml, /enabled = false/);
+    assert.deepEqual(parseHooksToml(toml).hooks, [
+      { event: "task.created", type: "command", command: "echo hi", enabled: false },
+    ]);
+  });
+
+  it("omits enabled from stringify when the hook is enabled", () => {
+    const toml = stringifyHooksToml({
+      hooks: [{ event: "task.created", type: "command", command: "echo hi" }],
+    });
+    assert.doesNotMatch(toml, /enabled/);
+  });
+
+  it("round-trips a multi-line inline script verbatim", () => {
+    const script = "#!/usr/bin/env node\nconsole.log('hi')\n// don't 'mangle' \"quotes\"";
+    const toml = stringifyHooksToml({
+      hooks: [{ event: "task.created", type: "command", script }],
+    });
+    assert.match(toml, /script = '''/);
+    assert.deepEqual(parseHooksToml(toml).hooks, [
+      { event: "task.created", type: "command", script },
+    ]);
+  });
+
+  it("parses a single-line quoted script", () => {
+    const config = parseHooksToml(`
+[[hook]]
+event = "task.created"
+type = "command"
+script = "echo inline"
+`);
+    assert.deepEqual(config.hooks, [
+      { event: "task.created", type: "command", script: "echo inline" },
+    ]);
+  });
 });
 
 describe("fireHooks", () => {
@@ -124,8 +192,40 @@ describe("fireHooks", () => {
     });
   });
 
+  it("does not fire a disabled hook", async () => {
+    await withServer(async (url, received) => {
+      await useTempProjectRoot(
+        `[[hook]]\nevent = "task.created"\ntype = "webhook"\nurl = "${url}"\nenabled = false\n`,
+      );
+      await fireHooks("task.created", { id: "0001" });
+      assert.equal(received.length, 0);
+    });
+  });
+
   it("is a no-op when there is no hooks config", async () => {
     await useTempProjectRoot();
     await fireHooks("task.created", { id: "0001" }); // must not throw
+  });
+
+  it("runs an inline script, honoring its shebang", async () => {
+    const dir = await useTempProjectRoot();
+    const outfile = join(dir, "out.txt").replace(/\\/g, "\\\\");
+    // A node shebang picks the interpreter cross-platform; the script writes
+    // the event name (surfaced as TASKDIR_EVENT) to a file we can assert on.
+    const script = [
+      "#!/usr/bin/env node",
+      `require("fs").writeFileSync("${outfile}", process.env.TASKDIR_EVENT)`,
+    ].join("\n");
+    await mkdir(join(dir, ".taskdir"), { recursive: true });
+    await writeFile(
+      join(dir, ".taskdir", "hooks.toml"),
+      stringifyHooksToml({
+        hooks: [{ event: "task.created", type: "command", script }],
+      }),
+      "utf8",
+    );
+    await fireHooks("task.created", { id: "0001" });
+    const written = await readFile(join(dir, "out.txt"), "utf8");
+    assert.equal(written, "task.created");
   });
 });

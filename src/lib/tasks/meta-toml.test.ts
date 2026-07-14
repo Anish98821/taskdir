@@ -10,18 +10,16 @@ describe("parseMetaToml", () => {
         'title = "Ship it"',
         'created_at = "2026-06-10T00:00:00.000Z"',
         'priority = "high"',
-        'mode = "plan_only"',
+        'mode = "bugfix"',
         'tags = ["self-improvement", "tests"]',
-        "generate_report = false",
         'agent = "codex"',
       ].join("\n")),
       {
         title: "Ship it",
         created_at: "2026-06-10T00:00:00.000Z",
         priority: "high",
-        mode: "plan_only",
+        mode: "bugfix",
         tags: ["self-improvement", "tests"],
-        generate_report: false,
         agent: "codex",
       },
     );
@@ -45,9 +43,8 @@ describe("parseMetaToml", () => {
       title: "(untitled)",
       created_at: new Date(0).toISOString(),
       priority: "med",
-      mode: "plan_and_execute",
+      mode: "plan",
       tags: [],
-      generate_report: true,
     });
   });
 });
@@ -58,9 +55,8 @@ describe("stringifyMetaToml", () => {
       title: 'Say "hello"',
       created_at: "2026-06-10T00:00:00.000Z",
       priority: "med",
-      mode: "plan_and_execute",
+      mode: "plan",
       tags: ["docs", 'quote"tag'],
-      generate_report: true,
       agent: "codex",
     };
 
@@ -70,9 +66,8 @@ describe("stringifyMetaToml", () => {
         'title = "Say \'hello\'"',
         'created_at = "2026-06-10T00:00:00.000Z"',
         'priority = "med"',
-        'mode = "plan_and_execute"',
+        'mode = "plan"',
         'tags = ["docs", "quote\'tag"]',
-        "generate_report = true",
         'agent = "codex"',
         "",
       ].join("\n"),

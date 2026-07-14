@@ -31,18 +31,16 @@ describe("parseCreateTaskForm", () => {
         title: "  Ship Tests  ",
         context: "write coverage",
         priority: "high",
-        mode: "plan_only",
+        mode: "bugfix",
         tags: " tests, self-improvement ,, ",
-        generate_report: "false",
         agent: " codex ",
       })),
       {
         title: "Ship Tests",
         context: "write coverage",
         priority: "high",
-        mode: "plan_only",
+        mode: "bugfix",
         tags: ["tests", "self-improvement"],
-        generate_report: false,
         agent: "codex",
       },
     );
@@ -63,9 +61,8 @@ describe("parseCreateTaskForm", () => {
         title: "Fallbacks",
         context: "",
         priority: "med",
-        mode: "plan_and_execute",
+        mode: "plan",
         tags: [],
-        generate_report: true,
       },
     );
   });

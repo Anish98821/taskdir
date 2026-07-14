@@ -1,3 +1,4 @@
+import { DEFAULT_MODE_ID } from "../modes-types.ts";
 import type { TaskMeta } from "../task-types.ts";
 import { isMode, isPriority } from "./validation.ts";
 
@@ -19,9 +20,6 @@ export function parseMetaToml(src: string): TaskMeta {
       else if (key === "agent" && str.trim()) out.agent = str.trim();
       else if (key === "runtime" && str.trim() && !out.agent)
         out.agent = str.trim();
-      else if (key === "report_seen_at") out.report_seen_at = str;
-    } else if (val === "true" || val === "false") {
-      if (key === "generate_report") out.generate_report = val === "true";
     } else if (val.startsWith("[") && val.endsWith("]")) {
       const inner = val.slice(1, -1).trim();
       const items = inner
@@ -34,11 +32,9 @@ export function parseMetaToml(src: string): TaskMeta {
     title: out.title ?? "(untitled)",
     created_at: out.created_at ?? new Date(0).toISOString(),
     priority: out.priority ?? "med",
-    mode: out.mode ?? "plan_and_execute",
+    mode: out.mode ?? DEFAULT_MODE_ID,
     tags: out.tags ?? [],
-    generate_report: out.generate_report ?? true,
     ...(out.agent ? { agent: out.agent } : {}),
-    ...(out.report_seen_at ? { report_seen_at: out.report_seen_at } : {}),
   };
 }
 
@@ -51,13 +47,9 @@ export function stringifyMetaToml(meta: TaskMeta): string {
     `priority = "${meta.priority}"`,
     `mode = "${meta.mode}"`,
     `tags = [${tags}]`,
-    `generate_report = ${meta.generate_report ? "true" : "false"}`,
   ];
   if (meta.agent) {
     lines.push(`agent = "${esc(meta.agent)}"`);
-  }
-  if (meta.report_seen_at) {
-    lines.push(`report_seen_at = "${meta.report_seen_at}"`);
   }
   lines.push("");
   return lines.join("\n");

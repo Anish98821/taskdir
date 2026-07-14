@@ -7,7 +7,6 @@ export interface CreateTaskFormInput {
   priority: Priority;
   mode: Mode;
   tags: string[];
-  generate_report: boolean;
   agent?: string;
 }
 
@@ -34,11 +33,6 @@ export function parseCreateTaskForm(formData: FormData): CreateTaskFormInput | n
     .map((s) => s.trim())
     .filter(Boolean);
   const context = String(formData.get("context") ?? "");
-  const generateReportRaw = formData.get("generate_report");
-  const generate_report =
-    generateReportRaw === null
-      ? true
-      : !["false", "off", "0", "no"].includes(String(generateReportRaw));
   const agent =
     String(formData.get("agent") ?? formData.get("runtime") ?? "").trim();
 
@@ -48,7 +42,6 @@ export function parseCreateTaskForm(formData: FormData): CreateTaskFormInput | n
     priority,
     mode,
     tags,
-    generate_report,
     ...(agent ? { agent } : {}),
   };
 }

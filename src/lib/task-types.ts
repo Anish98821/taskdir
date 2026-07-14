@@ -5,7 +5,14 @@
 export type Status = string;
 export const STATUSES: Status[] = ["pending", "in_progress", "done"];
 
-export const CANONICAL_FILES = ["context.md", "clarification.md", "report.md"] as const;
+// Files with a recognized identity + fixed ordering (listed before custom
+// files, in this order). clarification.md is created by the blocked flow, not
+// added by hand — so it orders here but is not offered as a quick-add.
+export const CANONICAL_FILES = ["context.md", "instructions.md", "clarification.md"] as const;
+
+// The only files offered as one-click "add" suggestions in the file tab menu.
+// Everything else is created via "custom…".
+export const ADDABLE_FILES = ["context.md", "instructions.md"] as const;
 
 export type Priority = "low" | "med" | "high";
 export const PRIORITIES: Priority[] = ["low", "med", "high"];
@@ -14,12 +21,7 @@ export const PRIORITIES: Priority[] = ["low", "med", "high"];
 // meta.toml as its id string; MODES lists the built-in default ids used when a
 // project has no modes.toml.
 export type Mode = string;
-export const MODES: string[] = [
-  "plan_only",
-  "plan_and_execute",
-  "fast_execute",
-  "report_only",
-];
+export const MODES: string[] = ["plan", "bugfix", "research"];
 
 export interface TaskMeta {
   title: string;
@@ -27,9 +29,7 @@ export interface TaskMeta {
   priority: Priority;
   mode: Mode;
   tags: string[];
-  generate_report: boolean;
   agent?: string;
-  report_seen_at?: string;
 }
 
 export interface TaskSummary {
@@ -38,7 +38,6 @@ export interface TaskSummary {
   folder: string;
   status: Status;
   meta: TaskMeta;
-  hasReport: boolean;
   lastActiveMs: number;
 }
 

@@ -14,13 +14,12 @@ export interface ModesConfig {
 }
 
 export const DEFAULT_MODES: ModeDef[] = [
-  { id: "plan_only", label: "plan only", icon: "pencil" },
-  { id: "plan_and_execute", label: "plan + execute", icon: "list-checks" },
-  { id: "fast_execute", label: "fast execute", icon: "zap" },
-  { id: "report_only", label: "report only", icon: "file-check" },
+  { id: "plan", label: "plan", icon: "pencil" },
+  { id: "bugfix", label: "bugfix", icon: "bug" },
+  { id: "research", label: "research", icon: "search" },
 ];
 
-export const DEFAULT_MODE_ID = "plan_and_execute";
+export const DEFAULT_MODE_ID = "plan";
 
 // A mode id is a lowercase slug — same shape as a safe filename stem, so it can
 // back a `.taskdir/strategies/<id>.md` file.

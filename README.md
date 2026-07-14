@@ -120,6 +120,22 @@ Events: `task.created`, `task.status_changed`, `task.updated`, `task.deleted`,
   `TASKDIR_*` env vars for each scalar payload field (e.g. `TASKDIR_ID`).
 - **webhook** hooks receive a JSON body `{ event, timestamp, data }`.
 
+A command hook can point at a command/file to run, or carry **inline code**
+directly. In the web UI (Settings → hooks) toggle "inline code" for a proper
+code editor; on disk it's a `script` block. The engine writes the script to a
+temp file and runs it, honoring a shebang (`#!/usr/bin/env node`, `#!/bin/bash`,
+…) cross-platform, or falling back to the platform shell:
+
+```toml
+[[hook]]
+event = "task.created"
+type = "command"
+script = '''
+#!/usr/bin/env node
+console.log(`new task: ${process.env.TASKDIR_ID}`)
+'''
+```
+
 Toggle a hook off without deleting it via the power button in Settings → hooks,
 or add `enabled = false` to its table. Hooks fire unless explicitly disabled:
 
@@ -195,6 +211,9 @@ taskdir init [options]         initialise .taskdir/ in the current directory
   -h, --help
 
 taskdir mcp                    run the stdio MCP server for the current project
+
+taskdir tools                  list the task tools runnable from the shell
+taskdir <tool> [options]       run any MCP tool directly (see `taskdir tools`)
 
 taskdir web [options]          launch the web UI (auto-opens the browser)
   -p, --port <n>               default 3000, auto-increments if busy

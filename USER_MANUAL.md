@@ -88,6 +88,25 @@ TASKDIR_TASKS_DIR=C:\Path\To\Project\.taskdir\tasks
 
 The MCP server exposes task listing, creation, status updates, metadata updates, and markdown file operations.
 
+## Use Taskdir From The Shell
+
+Every MCP tool is also a plain `taskdir` subcommand — no MCP client required. The
+command surface is derived from the same schema the MCP server uses, so the two
+never drift.
+
+```bash
+taskdir tools                                    # list every tool
+taskdir create_task --title "Fix login" --mode bugfix
+taskdir list_tasks --status in_progress
+taskdir update_status 0001 done                  # required fields can be positional
+taskdir register_agent --name "Codex" --provider openai
+taskdir list_agents
+taskdir <tool> --help                            # options for any one tool
+```
+
+Option names match the tool fields. This covers the full surface: tasks, files,
+modes, and agent registration.
+
 ## Create A Task
 
 In the web UI:

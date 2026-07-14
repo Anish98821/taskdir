@@ -9,7 +9,6 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [S
 - **Full CLI mirror of the MCP surface.** Every MCP tool is now a plain `taskdir` subcommand — `taskdir create_task`, `taskdir list_tasks`, `taskdir update_status`, `taskdir register_agent`, `taskdir unregister_agent`, and the rest. Run `taskdir tools` for the list and `taskdir <tool> --help` for a tool's options. The commands are derived from the same schema the MCP server exposes, so the two can't drift. Options are `--key value`/`--key=value`; required fields may be passed positionally (e.g. `taskdir update_status 0001 done`).
 - **Inline hook scripts.** A command hook can now carry inline code (a `script` block) instead of only a command/file path. Settings → hooks offers a dedicated code editor for it. The engine writes the script to a temp file and runs it, honoring a shebang (`#!/usr/bin/env node`, `#!/bin/bash`, …) cross-platform, or falling back to the platform shell.
 - **`taskdir init --interface <mcp|cli>`** (with `--cli` shorthand) chooses how agents talk to taskdir and tailors the installed skill files accordingly. Asked interactively when not passed.
-- **Auto-run agent on new tasks.** Ships a `task.created` hook + `scripts/taskdir-on-create.mjs` that launches a Claude Code CLI detached to work each newly created task, with a recursion guard (`TASKDIR_AUTORUN`) and knobs (`TASKDIR_AUTORUN_DISABLE`, `TASKDIR_CLAUDE_BIN`, `TASKDIR_CLAUDE_ARGS`).
 
 ### Changed
 

@@ -150,17 +150,6 @@ enabled = false                  # keeps the config, stops it firing
 Firing is best-effort and non-blocking — a slow or failing hook never blocks the
 operation that triggered it (10s timeout).
 
-### Example: auto-run an agent on new tasks
-
-This repo ships a `task.created` hook (`.taskdir/hooks.toml`) that launches a
-Claude Code CLI in the background to work each newly-created task, via
-`scripts/taskdir-on-create.mjs`. Because the hook's child is killed after 10s,
-the script spawns Claude **detached** and returns immediately; it also stamps
-`TASKDIR_AUTORUN=1` into the child so subtasks the agent creates don't recurse.
-Knobs: `TASKDIR_AUTORUN_DISABLE=1` to turn it off, `TASKDIR_CLAUDE_ARGS` to
-control autonomy (e.g. `--dangerously-skip-permissions` for a fully unattended
-run).
-
 ## Stack
 
 - Next.js 16 (App Router) + TypeScript

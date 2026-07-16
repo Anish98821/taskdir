@@ -1,9 +1,9 @@
 // Task-status registry.
 //
 // Statuses live in `.taskdir/statuses.toml` as `[[status]]` tables. When the
-// file is absent, the five built-in defaults are used. Users can relabel or
-// recolor any status and add their own; the built-in ids are always kept
-// because workflow behavior (banners, notifications, hooks) depends on them.
+// file is absent, the built-in defaults are used. Users can relabel, recolor,
+// remove any status, or add their own — the config is the single source of
+// truth.
 
 import { promises as fs } from "node:fs";
 import path from "node:path";

@@ -1,9 +1,5 @@
 import Link from "next/link";
 import { X } from "lucide-react";
-import { answerClarification } from "@/app/actions";
-import { Textarea } from "@/components/ui/textarea";
-import { ApprovePlanBanner } from "@/features/tasks/components/ApprovePlanBanner";
-import { ClarificationSubmitButton } from "@/features/tasks/components/ClarificationSubmitButton";
 import { DeleteTaskButton } from "@/features/tasks/components/DeleteTaskButton";
 import { FileEditor } from "@/features/tasks/components/FileEditor";
 import { FileTabs } from "@/features/tasks/components/FileTabs";
@@ -31,8 +27,6 @@ export function TaskDetail({
   modes,
   statuses,
 }: Props) {
-  const answerBound = answerClarification.bind(null, task.id);
-
   const closeHref = (() => {
     const sp = new URLSearchParams(baseParams.toString());
     sp.delete("task");
@@ -74,26 +68,6 @@ export function TaskDetail({
           modes={modes}
         />
       </header>
-
-      {task.status === "awaiting_approval" && (
-        <ApprovePlanBanner taskId={task.id} />
-      )}
-
-      {task.status === "blocked" && (
-        <section className="border-b border-border bg-amber-400/5 px-4 py-3">
-          <p className="mb-2 text-xs text-amber-400">answer the question</p>
-          <form action={answerBound} className="flex flex-col gap-2">
-            <Textarea
-              name="answer"
-              required
-              rows={3}
-              className="resize-y font-mono"
-              placeholder="your answer…"
-            />
-            <ClarificationSubmitButton />
-          </form>
-        </section>
-      )}
 
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
         <FileTabs

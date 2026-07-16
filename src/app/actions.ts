@@ -28,7 +28,6 @@ import {
   type StatusesConfig,
 } from "@/lib/statuses";
 import {
-  appendToFile,
   createFile,
   createTask,
   deleteFile,
@@ -49,18 +48,6 @@ export async function setStatus(id: string, status: Status): Promise<void> {
 
 export async function setMeta(id: string, patch: MetaPatch): Promise<void> {
   await updateMeta(id, patch);
-  refresh();
-}
-
-export async function answerClarification(
-  id: string,
-  formData: FormData,
-): Promise<void> {
-  const answer = String(formData.get("answer") ?? "").trim();
-  if (!answer) return;
-  const stamped = `\n\n---\n\n## Answer (${new Date().toISOString()})\n\n${answer}\n`;
-  await appendToFile(id, "clarification.md", stamped);
-  await updateStatus(id, "in_progress");
   refresh();
 }
 

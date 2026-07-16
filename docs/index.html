@@ -4,9 +4,9 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>taskdir: local task management</title>
-<meta name="description" content="Filesystem-backed task tracker for AI coding agents. MCP-native. Tasks live as folders on disk, so ls, grep, git diff all work." />
+<meta name="description" content="Filesystem-backed task tracker for AI coding agents. CLI-first, MCP available. Tasks live as folders on disk, so ls, grep, git diff all work." />
 <meta property="og:title" content="taskdir: local task management" />
-<meta property="og:description" content="Filesystem-backed task tracker for AI coding agents. MCP-native." />
+<meta property="og:description" content="Filesystem-backed task tracker for AI coding agents. CLI-first, MCP available." />
 <meta property="og:image" content="https://raw.githubusercontent.com/Anish98821/taskdir/main/banner.png" />
 <meta name="twitter:card" content="summary_large_image" />
 <link rel="icon" href="favicon.jpg" type="image/jpeg" />
@@ -276,6 +276,14 @@
   }
 
   /* ------- mcp grid ------- */
+  .tools-note {
+    font-size: 14.5px; color: var(--ink-2); line-height: 1.55;
+    margin: -12px 0 24px; max-width: 62ch;
+  }
+  .tools-note code {
+    font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+    font-size: 13px; color: var(--ink);
+  }
   .tool-grid {
     list-style: none; margin: 0; padding: 0;
     display: grid; grid-template-columns: repeat(3, 1fr);
@@ -323,26 +331,10 @@
     max-width: 32ch;
     letter-spacing: -.005em;
   }
-  .ui-mock {
-    border: 1px solid var(--rule); border-radius: 4px; overflow: hidden;
-    background: var(--paper-2);
-    font-family: "IBM Plex Mono"; font-size: 12.5px;
+  .ui-shot {
+    display: block; width: 100%; height: auto;
+    border: 1px solid var(--rule); border-radius: 4px;
   }
-  .ui-mock .bar { padding: 8px 12px; border-bottom: 1px solid var(--rule); color: var(--ink-2); display: flex; gap: 8px; }
-  .ui-mock .bar .d { width: 8px; height: 8px; border-radius: 50%; background: var(--rule); }
-  .ui-mock .list { padding: 4px 0; }
-  .ui-mock .item {
-    padding: 10px 14px; border-bottom: 1px solid var(--rule); display: grid;
-    grid-template-columns: 70px 1fr auto; gap: 12px; align-items: center;
-  }
-  .ui-mock .item:last-child { border-bottom: none; }
-  .ui-mock .item .st { font-size: 10px; letter-spacing: .08em; text-transform: uppercase; }
-  .ui-mock .st.blocked { color: var(--accent); }
-  .ui-mock .st.progress { color: var(--warn); }
-  .ui-mock .st.done { color: var(--ok); }
-  .ui-mock .st.pending { color: var(--ink-2); }
-  .ui-mock .title { color: var(--ink); }
-  .ui-mock .prio { color: var(--ink-2); font-size: 11px; }
 
   /* ------- install cards ------- */
   .install-grid {
@@ -466,7 +458,7 @@
       <div class="col">
         <div class="tag">a queue for the agent</div>
         <h3>Agents work better with a plan.</h3>
-        <p>Schedule work up front with a title, priority, mode, and context. The agent picks it up on the next run instead of asking what to do. Blocked tasks surface first so the human-in-the-loop always has a queue too.</p>
+        <p>Schedule work up front with a title, priority, mode, and context. The agent picks it up on the next run instead of asking what to do, and the human-in-the-loop always has a queue too.</p>
       </div>
       <div class="col">
         <div class="tag">local</div>
@@ -474,16 +466,17 @@
         <p>Tasks live in the repo next to the code. They branch when you branch, ship with the repo, and disappear when you delete it. No account, no server, no vendor.</p>
       </div>
       <div class="col">
-        <div class="tag">plain text · mcp</div>
+        <div class="tag">plain text · cli</div>
         <h3>The format agents already read.</h3>
-        <p>Markdown and TOML. No custom schema for the model to guess at. The stdio MCP server exposes 10 tools so any MCP client (Claude Code, Codex, Cursor, custom) can list, create, and update.</p>
+        <p>Markdown and TOML. No custom schema for the model to guess at. Agents just run <code>taskdir &lt;tool&gt;</code> from the shell to list, create, and update — no client wiring. The same tools are also served over stdio MCP for clients that want it.</p>
       </div>
     </div>
   </section>
 
-  <!-- MCP -->
+  <!-- TOOLS (CLI-first; same surface over MCP) -->
   <section id="mcp" aria-labelledby="mcp-h">
-    <div class="path-head" id="mcp-h"><span class="dot">●</span> mcp/tools/</div>
+    <div class="path-head" id="mcp-h"><span class="dot">●</span> taskdir/tools/</div>
+    <p class="tools-note">Every tool is a shell command — <code>taskdir list_tasks</code>, <code>taskdir create_task</code> — and the identical surface is exposed over stdio MCP.</p>
     <ul class="tool-grid">
       <li><span class="name">list_tasks</span><span class="desc">Filter by status, tag, or priority.</span></li>
       <li><span class="name">get_task</span><span class="desc">Read a task folder by id.</span></li>
@@ -506,16 +499,7 @@
         <p class="head">stay in the loop</p>
         <p class="sub">Add, edit, assign, and prioritise. Everything the agent is working on, in one calm view.</p>
       </div>
-      <div class="ui-mock" aria-hidden="true">
-        <div class="bar"><span class="d"></span><span class="d"></span><span class="d"></span><span style="margin-left: 8px;">localhost:3000</span></div>
-        <div class="list">
-          <div class="item"><span class="st blocked">blocked</span><span class="title">0038 · clarify API surface for /invite</span><span class="prio">P0</span></div>
-          <div class="item"><span class="st progress">in progress</span><span class="title">0042 · add auth</span><span class="prio">P1</span></div>
-          <div class="item"><span class="st progress">in progress</span><span class="title">0043 · rate-limit login attempts</span><span class="prio">P1</span></div>
-          <div class="item"><span class="st pending">pending</span><span class="title">0044 · refactor session store</span><span class="prio">P2</span></div>
-          <div class="item"><span class="st done">done</span><span class="title">0031 · bump next to 16.2</span><span class="prio">P3</span></div>
-        </div>
-      </div>
+      <img class="ui-shot" src="webui.png" width="1848" height="368" loading="lazy" alt="The taskdir web UI task list: blocked, in-progress, pending, and done tasks with priorities" />
     </div>
   </section>
 
@@ -538,7 +522,7 @@
       <div class="icard">
         <div class="step">02 · init</div>
         <h4>Set up the project</h4>
-        <p>Creates <code>.taskdir/</code>, drops in an <code>AGENTS.md</code>, and registers the MCP server with your agent so the tools are ready on the next session.</p>
+        <p>Creates <code>.taskdir/</code> and drops in an <code>AGENTS.md</code> so agents drive taskdir from the shell by default. Prefer MCP? Pick it during init to register the server instead.</p>
         <div class="cmd-row">
           <span class="p">$</span> taskdir init
           <button class="copy-btn" data-copy="taskdir init" aria-label="Copy init command">

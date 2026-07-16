@@ -4,41 +4,24 @@
 
 # Taskdir
 
-Filesystem-backed task tracker for AI agents. MCP tools + a small web UI for the human in the loop.
+Filesystem-backed task tracker for AI agents. Agents drive it from the shell with the `taskdir` CLI (the same surface is also exposed over MCP); a small web UI keeps the human in the loop.
 
 ## Layout
 
 ```
 tasks/
   0042-add-auth/
-    status              # pending | in_progress | awaiting_approval | blocked | done
+    status              # pending | in_progress | blocked | done
     meta.toml           # title, created_at, priority, mode, tags, agent
     context.md          # optional
     clarification.md    # present when status=blocked
 ```
 
-Tasks live as folders on disk. `git diff`, `cp -r`, `grep -r` all work. Agents can use MCP or edit files directly.
+Tasks live as folders on disk. `git diff`, `cp -r`, `grep -r` all work. Agents can use the CLI, MCP, or edit files directly.
 
-## MCP tools
+## Task tools
 
-- `list_tasks(status?, tag?, priority?)`
-- `get_task(id)` — returns all files concatenated
-- `create_task(title, context?, priority?, mode?, tags?, agent?)`
-- `update_status(id, status)`
-- `update_meta(id, title?, priority?, mode?, tags?, agent?)`
-- `append_to_file(id, filename, content)`
-- `create_file(id, filename)`
-- `rename_file(id, old_name, new_name)`
-- `delete_file(id, filename)`
-- `list_modes()` — project-defined task modes
-- `list_agents()`
-- `register_agent(name, provider, id?)`
-- `unregister_agent(id)`
-
-## CLI tools
-
-Every tool above is also a shell command — the same surface, no MCP client
-required:
+Agents talk to taskdir by running shell commands — no client wiring required:
 
 ```bash
 taskdir tools                              # list the commands
@@ -48,13 +31,34 @@ taskdir update_status 0001 done            # required fields can be positional
 taskdir get_task 0001
 ```
 
-Option names match the tool fields; run `taskdir <tool> --help` for any one.
-The commands are derived from the same schema the MCP server uses, so they never
+The full surface:
+
+- `list_tasks [--status <s>] [--tag <t>] [--priority <p>]`
+- `get_task <id>` — returns all files concatenated
+- `create_task --title "..." [--context ...] [--priority ...] [--mode ...] [--tags a,b] [--agent ...]`
+- `update_status <id> <status>`
+- `update_meta <id> [--title ...] [--priority ...] [--mode ...] [--tags a,b] [--agent ...]`
+- `append_to_file <id> <filename> <content>`
+- `create_file <id> <filename>`
+- `rename_file <id> <old_name> <new_name>`
+- `delete_file <id> <filename>`
+- `list_modes` — project-defined task modes
+- `list_agents`
+- `register_agent --name "..." --provider <provider> [--id ...]`
+- `unregister_agent <id>`
+
+Run `taskdir <tool> --help` for any one.
+
+### Also available over MCP
+
+Every command above is also an MCP tool with the same name and fields, served
+by the stdio server (`taskdir mcp`) for clients that prefer it (Claude Code,
+Cursor, custom). Both surfaces are derived from the same schema, so they never
 drift.
 
 ## Web UI
 
-- List view with status/priority/tags; blocked tasks sort first.
+- List view with status/priority/tags.
 - Detail view edits markdown files with basic conflict detection.
 - Live updates via chokidar → SSE.
 - Settings → agents / modes / statuses / hooks / project. Edit/preview,
@@ -91,10 +95,8 @@ label = "in review"
 color = "cyan"
 ```
 
-Two ids carry extra UI behavior when configured: `awaiting_approval` shows the
-approve-plan banner and `blocked` shows the clarification banner. Tasks whose
-on-disk status is no longer configured stay visible (rendered neutral) — the
-files are the source of truth.
+Tasks whose on-disk status is no longer configured stay visible (rendered
+neutral) — the files are the source of truth.
 
 ## Hooks
 
@@ -159,32 +161,28 @@ operation that triggered it (10s timeout).
 
 ## Install into a project
 
-Initialise `.taskdir/` in the current directory:
-
-```bash
-npx -y @anish98821/taskdir init
-```
-
-Creates `.taskdir/config.toml`, a tasks directory (default `.taskdir/tasks`), and `.taskdir/README.md`. Adds the tasks directory to `.gitignore` if a `.git` exists. Drop `AGENTS.md` into the repo so agents know the protocol.
-
-Register the MCP server with Claude Code so it shows up as a tool source on the next session:
-
-```bash
-claude mcp add taskdir -- npx -y @anish98821/taskdir
-```
-
-Launch the web UI (auto-picks a free port, auto-opens the browser):
-
-```bash
-npx -y @anish98821/taskdir web
-```
-
-Global install if you'd rather type `taskdir` directly:
+Install globally (agents invoke `taskdir` from the shell, so it needs to be on
+PATH), then initialise `.taskdir/` in the project:
 
 ```bash
 npm install -g @anish98821/taskdir
 taskdir init
+```
+
+Creates `.taskdir/config.toml`, a tasks directory (default `.taskdir/tasks`), and `.taskdir/README.md`. Adds the tasks directory to `.gitignore` if a `.git` exists. Installs skill files that tell agents to drive taskdir through the CLI. Drop `AGENTS.md` into the repo so agents know the protocol.
+
+Launch the web UI (auto-picks a free port, auto-opens the browser):
+
+```bash
 taskdir web
+```
+
+Prefer MCP? Pick it during `taskdir init` (or pass `--interface mcp`) to have
+init register the server config for you, or register it manually with Claude
+Code:
+
+```bash
+claude mcp add taskdir -- npx -y @anish98821/taskdir
 ```
 
 ## CLI
@@ -194,7 +192,7 @@ A single `taskdir` executable is installed by the npm package (and by the SEA bu
 ```
 taskdir init [options]         initialise .taskdir/ in the current directory
   --tasks-dir <path>           tasks folder (default: .taskdir/tasks)
-  --interface <mcp|cli>        how agents talk to taskdir (default: mcp; asked interactively)
+  --interface <cli|mcp>        how agents talk to taskdir (default: cli; asked interactively)
   --cli                        shorthand for --interface cli
   -y, --yes                    skip prompts
   -h, --help

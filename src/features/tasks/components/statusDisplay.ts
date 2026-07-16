@@ -59,11 +59,9 @@ export function statusLabel(statuses: StatusDef[], id: string): string {
   return statusDefFor(statuses, id).label;
 }
 
-// Attention-ordered sort rank: things needing a human first, done last.
-// Custom statuses count as active work; ties within them keep config order.
+// Attention-ordered sort rank: active work first, done last. Custom statuses
+// count as active work; ties within them keep config order.
 const BUILTIN_RANK: Record<string, number> = {
-  blocked: 0,
-  awaiting_approval: 1,
   in_progress: 2,
   pending: 4,
   done: 5,

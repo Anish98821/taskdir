@@ -2,6 +2,20 @@
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [SemVer](https://semver.org/).
 
+## 0.8.0 — 2026-07-16
+
+### Removed
+
+- **Status-triggered UI behaviors.** No status id is special anymore — statuses are labels with colors. Gone: the approve/request-changes banner on `awaiting_approval` tasks, the clarification answer box on `blocked` tasks, the notifications drawer (bell) that surfaced both, and the sort boost that floated `blocked`/`awaiting_approval` tasks to the top. The blocked workflow still works as a convention — agents write questions to `clarification.md` and the user answers in the file editor and flips the status back — but the UI no longer hard-codes it. The skill files and docs no longer instruct agents to park plans in `awaiting_approval`; projects that still configure these statuses keep them as plain statuses.
+
+### Fixed
+
+- **`taskdir web` no longer collides with a dev server on the same port (Windows).** The free-port scan trusted a successful bind, but on Windows binding a port another process already listens on can silently succeed, so `taskdir web` would "start" on the dev server's port, the readiness ping would be answered by the dev server, and the browser opened the wrong instance. The scan now also probes the port with a TCP connect (both loopback families for loopback/wildcard binds) and skips ports that accept connections, and the readiness ping targets the exact bind address instead of `localhost`.
+
+### Changed
+
+- **CLI is now the default agent interface.** `taskdir init` defaults `--interface` to `cli` (previously `mcp`), both interactively and with `-y`: skill files now describe the `taskdir <tool>` shell commands by default, and **no MCP server configs are written unless you pick MCP** (`--interface mcp`). This changes `init -y` behavior — pass `--interface mcp` (or `--mcp claude,cursor`) to keep the old result. When CLI is chosen and `taskdir` isn't found on PATH, init prints an install hint. README, `AGENTS.md`, and the brand site now present the CLI as the primary surface, with MCP as the mirror.
+
 ## 0.7.0 — 2026-07-14
 
 ### Added

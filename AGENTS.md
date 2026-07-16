@@ -1,6 +1,6 @@
 # Taskdir — Agent Skill
 
-You're an AI coding agent working in a project that uses **taskdir** to track work. Taskdir is a local-first task tracker that stores tasks as folders of markdown on disk and exposes them over MCP. Follow this skill every time you connect.
+You're an AI coding agent working in a project that uses **taskdir** to track work. Taskdir is a local-first task tracker that stores tasks as folders of markdown on disk and exposes them as `taskdir` CLI commands you run from the shell (the same surface is also available over MCP). Follow this skill every time you work in this project.
 
 ## 1. Reuse or register an agent on first connect
 
@@ -8,28 +8,22 @@ Before doing any work, make sure you're represented in the project's agent regis
 
 First, list who's already registered:
 
-```jsonc
-// MCP tool call
-{ "name": "list_agents", "arguments": {} }
+```bash
+taskdir list_agents
 ```
 
 - If a **generic agent of your provider/model already exists** (e.g. a `Claude Code` entry when you're Claude Code), just adopt it — use its `id` for task routing and skip registration. Don't create a near-duplicate.
 - Only `register_agent` when there's no suitable match, **or** the user explicitly wants a distinct identity for this session (a named persona, a second parallel worker, etc.).
 
-```jsonc
-// MCP tool call — only when no reusable agent exists
-{
-  "name": "register_agent",
-  "arguments": {
-    "name": "<your display name>",     // e.g. "Claude Code", "Codex"
-    "provider": "<provider id>"        // anthropic | openai | google | meta | mistral | xai | cohere | deepseek | custom
-  }
-}
+```bash
+# only when no reusable agent exists
+# provider: anthropic | openai | google | meta | mistral | xai | cohere | deepseek | custom
+taskdir register_agent --name "Claude Code" --provider anthropic
 ```
 
 Rules:
 - Use a **stable, generic display name** for your provider/model class (e.g. "Claude Code") so registration is idempotent and naturally reuses one record across sessions.
-- The `id` is auto-generated from `name`. You can pass an explicit `id` to update an existing record (idempotent).
+- The `id` is auto-generated from `name`. You can pass an explicit `--id` to update an existing record (idempotent).
 - If your provider isn't in the enum, use `custom`.
 - Do **not** delete other agents the user has registered. Use `unregister_agent` only to remove your own, or when the user asks you to clean up.
 
@@ -60,7 +54,7 @@ Use the parent's status as a coordinator:
 The status set is project-defined in `.taskdir/statuses.toml`. The common core:
 
 ```
-pending  in_progress  awaiting_approval  blocked  done
+pending  in_progress  blocked  done
 ```
 
 `update_status` rejects ids that aren't configured — stick to statuses the
@@ -70,22 +64,18 @@ When you start a task, immediately set its status to `in_progress` via `update_s
 
 **Modes are project-defined.** Call `list_modes` to see them (id, label). A task's mode is stored in `meta.toml`. If the mode has a **strategy**, `get_task` appends it under `## strategy for mode: <id>` — treat that as instructions for how to approach this class of task and follow it.
 
-When you finish, set status to `done`. The "finish line" depends on the task's mode and its strategy — e.g. a planning mode ends with a plan written to `plan.md` and status `awaiting_approval`; an execution or bugfix mode ends with code changes shipped and verified and status `done`. Follow the mode's strategy if it defines one.
+When you finish, set status to `done`. The "finish line" depends on the task's mode and its strategy — e.g. a planning mode ends with a plan written to `plan.md`; an execution or bugfix mode ends with code changes shipped and verified. Follow the mode's strategy if it defines one.
 
-## 5. Awaiting approval
-
-Use `awaiting_approval` when you've written a plan and want the user to OK it before executing. Set the status, mention "ready for approval" in your response, and **stop**. Do not execute until the user signals approval (they will flip status to `in_progress` or tell you to proceed in the next turn).
-
-## 6. Blocking
+## 5. Blocking
 
 Use `blocked` when you genuinely can't proceed without user input:
 - An ambiguous requirement that has more than one reasonable interpretation.
 - A secret/credential you don't have.
 - A destructive choice you shouldn't make alone (deleting production data, force-pushing, schema-changing migrations).
 
-Write your blocking question into `clarification.md` (create the file if missing — see `append_to_file`). When the user replies, they'll add the answer and flip status back to `in_progress`.
+Write your blocking question into `clarification.md` via `taskdir append_to_file <id> clarification.md "<your question>"` (the file is created if missing). When the user replies, they'll add the answer and flip status back to `in_progress`.
 
-## 7. Use the tool whenever it would help
+## 6. Use the tool whenever it would help
 
 Don't go heads-down on your own todo list — the user has a task tracker for a reason. Concrete cases where you should write to taskdir:
 - You discovered follow-up work that the current task doesn't cover → `create_task`.
@@ -93,7 +83,7 @@ Don't go heads-down on your own todo list — the user has a task tracker for a 
 - You finished a sub-step → don't update status partially; finish the *task*, then update.
 - Status changes are not "free" — only emit them at real boundaries.
 
-## 8. File layout
+## 7. File layout
 
 ```
 tasks/
@@ -108,28 +98,30 @@ tasks/
 
 Folder name is `<padded-id>-<slug>` — you don't pick this, `create_task` does.
 
-## 9. Don't fight the user
+## 8. Don't fight the user
 
 If the user manually edits a task, status, or meta — assume they meant it. Don't re-flip status. Don't "correct" their title. Re-read before reacting.
 
-## MCP surface
+## CLI commands
 
-These are the only taskdir MCP tools. Resist asking for more.
+Run any of these from the shell — see `taskdir tools` for the full list and `taskdir <tool> --help` for one tool's options. Required fields can be passed positionally, in order. These are the only taskdir tools; resist asking for more.
 
+```bash
+taskdir list_tasks [--status <s>] [--tag <t>] [--priority <p>]
+taskdir get_task <id>                      # concatenated markdown + meta
+taskdir create_task --title "..." [--context ...] [--mode ...] [--tags a,b] [--agent ...]
+taskdir update_status <id> <status>
+taskdir update_meta <id> [--title ...] [--priority ...] [--mode ...] [--tags a,b] [--agent ...]
+taskdir append_to_file <id> <filename> <content>
+taskdir create_file <id> <filename>
+taskdir rename_file <id> <old_name> <new_name>
+taskdir delete_file <id> <filename>
+taskdir list_modes
+taskdir list_agents
+taskdir register_agent --name "..." --provider <provider>
+taskdir unregister_agent <id>
 ```
-list_tasks(filter)            # status, tag, priority — optional
-get_task(id)                  # concatenated markdown + meta
-create_task({title, ...})     # spawn a child
-update_status(id, status)
-update_meta(id, patch)        # title/priority/mode/tags/agent
-append_to_file(id, filename, content)
-create_file(id, filename)
-rename_file(id, old, new)
-delete_file(id, filename)
-list_modes()
-list_agents()
-register_agent({name, provider, id?})
-unregister_agent(id)
-```
 
-That's the whole protocol. If you find yourself reaching for filesystem access to do what one of these would do, use the MCP call instead — it keeps the watcher and the UI in sync.
+The identical surface is exposed over MCP (`taskdir mcp`) for clients that prefer tool calls — same names, same fields.
+
+That's the whole protocol. If you find yourself reaching for filesystem access to do what one of these would do, use the taskdir command instead — it keeps the watcher and the UI in sync.

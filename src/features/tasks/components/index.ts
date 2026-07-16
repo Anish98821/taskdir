@@ -1,5 +1,4 @@
 export { AppSidebar } from "./AppSidebar";
-export { ClarificationSubmitButton } from "./ClarificationSubmitButton";
 export { DeleteTaskButton } from "./DeleteTaskButton";
 export { FileEditor } from "./FileEditor";
 export { FileTabs } from "./FileTabs";

@@ -72,27 +72,11 @@ npm run dev
 
 Or launch Taskdir from a directory that has `.taskdir/config.toml`; the task service resolves that config automatically.
 
-## Configure An Agent Through MCP
-
-Use the stdio MCP server:
-
-```bash
-node --experimental-strip-types --no-warnings C:\Projects\taskdir\bin\taskdir.ts mcp
-```
-
-Set `TASKDIR_TASKS_DIR` in the agent's MCP environment if the agent should operate on a specific project:
-
-```text
-TASKDIR_TASKS_DIR=C:\Path\To\Project\.taskdir\tasks
-```
-
-The MCP server exposes task listing, creation, status updates, metadata updates, and markdown file operations.
-
 ## Use Taskdir From The Shell
 
-Every MCP tool is also a plain `taskdir` subcommand — no MCP client required. The
-command surface is derived from the same schema the MCP server uses, so the two
-never drift.
+The CLI is the default way agents talk to taskdir. Every tool is a plain
+`taskdir` subcommand — no MCP client required. The command surface is derived
+from the same schema the MCP server uses, so the two never drift.
 
 ```bash
 taskdir tools                                    # list every tool
@@ -107,6 +91,22 @@ taskdir <tool> --help                            # options for any one tool
 Option names match the tool fields. This covers the full surface: tasks, files,
 modes, and agent registration.
 
+## Configure An Agent Through MCP
+
+Prefer MCP tool calls? Use the stdio MCP server:
+
+```bash
+node --experimental-strip-types --no-warnings C:\Projects\taskdir\bin\taskdir.ts mcp
+```
+
+Set `TASKDIR_TASKS_DIR` in the agent's MCP environment if the agent should operate on a specific project:
+
+```text
+TASKDIR_TASKS_DIR=C:\Path\To\Project\.taskdir\tasks
+```
+
+The MCP server exposes the same tools as the CLI: task listing, creation, status updates, metadata updates, and markdown file operations.
+
 ## Create A Task
 
 In the web UI:
@@ -119,7 +119,7 @@ In the web UI:
 
 Quick-add in the task list creates a task with defaults.
 
-Through MCP, call `create_task` with:
+From an agent (CLI `taskdir create_task` or the MCP tool), call `create_task` with:
 
 ```json
 {
@@ -135,13 +135,12 @@ Through MCP, call `create_task` with:
 
 - `pending`: ready for an agent to pick up
 - `in_progress`: currently being worked
-- `awaiting_approval`: plan or action needs approval
 - `blocked`: agent needs human input
 - `done`: finished
 
 ## Human-In-The-Loop Flow
 
-When a task is blocked, open it in the UI, read the clarification prompt, answer in the provided box, and submit. Taskdir appends your answer to `clarification.md` and returns the task to `in_progress`.
+When a task is blocked, open it in the UI, read the question in `clarification.md`, append your answer in the file editor, and set the status back to `in_progress` from the status dropdown.
 
 ## Task Files
 
@@ -154,18 +153,13 @@ You can create additional markdown files (notes, a `report.md`, …) from the fi
 
 The file editor supports edit and preview modes. Saves use mtime conflict detection; if a file changed on disk, Taskdir asks whether to reload or overwrite.
 
-## Sorting, Filtering, And Notifications
+## Sorting And Filtering
 
 The task list supports:
 
 - search by id, title, or tag
 - status filter
 - sort by latest, priority, or status
-
-The notification drawer shows:
-
-- blocked tasks
-- tasks awaiting approval
 
 ## Maintenance
 

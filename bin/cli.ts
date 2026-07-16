@@ -356,28 +356,24 @@ Use the parent's status as a coordinator:
 
 ## 4. Status discipline
 
-Statuses: \`pending\`, \`in_progress\`, \`awaiting_approval\`, \`blocked\`, \`done\`.
+Statuses: \`pending\`, \`in_progress\`, \`blocked\`, \`done\`.
 
 Modes are project-defined — call \`list_modes\` to see them. A task's mode is in \`meta.toml\`; if that mode has a **strategy**, \`get_task\` appends it under \`## strategy for mode: <id>\` — follow it as instructions for that class of task.
 
-Set \`in_progress\` immediately when you start. Let the task's mode and its strategy decide where the finish line is — e.g. a planning mode ends with a written plan and \`awaiting_approval\`; an execution/bugfix mode ends with code shipped and verified and status \`done\`.
+Set \`in_progress\` immediately when you start. Let the task's mode and its strategy decide where the finish line is — e.g. a planning mode ends with a written plan; an execution/bugfix mode ends with code shipped and verified and status \`done\`.
 
-## 5. Awaiting approval
-
-Use \`awaiting_approval\` when you've written a plan and want the user to OK it. Set the status, say "ready for approval", and **stop**. Do not execute until the user proceeds.
-
-## 6. Blocking
+## 5. Blocking
 
 Use \`blocked\` when you can't proceed without user input (ambiguous requirement, missing secret, destructive choice). Write the question into \`clarification.md\` via ${clarificationCall}.
 
-## 7. Use the tool whenever it would help
+## 6. Use the tool whenever it would help
 
 Concrete cases:
 - Discovered follow-up work → \`create_task\`.
 - Filed a question for the user → set parent \`blocked\` and write \`clarification.md\`.
 - Finished a sub-step → don't update partially; finish the *task*, then update.
 
-## 8. File layout
+## 7. File layout
 
 \`\`\`
 tasks/
@@ -390,7 +386,7 @@ tasks/
     <anything>.md
 \`\`\`
 
-## 9. Don't fight the user
+## 8. Don't fight the user
 
 If the user manually edits a task, status, or meta — assume they meant it. Don't re-flip. Re-read before reacting.
 
@@ -507,7 +503,7 @@ function printInitHelp(): void {
       "Options:",
       "  --name <name>        project name (shown in the sidebar; default: folder name)",
       "  --tasks-dir <path>   directory to store tasks (default: .taskdir/tasks)",
-      "  --interface <which>  how agents talk to taskdir: mcp (default) or cli",
+      "  --interface <which>  how agents talk to taskdir: cli (default) or mcp",
       "  --cli                shorthand for --interface cli",
       "  --skills <list>      comma-separated skills to install: claude,codex (or 'none')",
       "  --mcp <list>         comma-separated MCP registrations: claude,cursor (or 'none')",
@@ -594,21 +590,21 @@ export async function runInit(argv: string[]): Promise<void> {
     ? tasksDirInput
     : path.relative(root, tasksDirAbs).split(path.sep).join("/") || ".";
 
-  // 3. agent interface preference: MCP tools or the taskdir CLI. This drives
+  // 3. agent interface preference: the taskdir CLI (default) or MCP tools. This drives
   // both the skill wording and whether we register an MCP server below.
   let iface: AgentInterface;
   if (args.iface) {
     iface = args.iface;
   } else if (args.yes) {
-    iface = "mcp";
+    iface = "cli";
   } else {
     iface = await promptSingleSelect(
       "how should agents talk to taskdir? (↑/↓ to move, enter to confirm):",
       [
+        { id: "cli", label: "CLI", hint: "agents run `taskdir <tool>` from the shell (default)" },
         { id: "mcp", label: "MCP", hint: "register taskdir as an MCP server; skill uses MCP tool calls" },
-        { id: "cli", label: "CLI", hint: "agents shell out to `taskdir <tool>`; no MCP registration" },
       ] as const,
-      "mcp",
+      "cli",
     );
   }
 
@@ -738,11 +734,33 @@ export async function runInit(argv: string[]): Promise<void> {
   }
   if (iface === "cli") {
     process.stdout.write(
-      "agent interface: CLI — skills tell agents to run `taskdir <tool>`; no MCP server registered\n",
+      "agent interface: CLI (default) — skills tell agents to run `taskdir <tool>`\n",
     );
+    if (!taskdirOnPath()) {
+      process.stdout.write(
+        "note: `taskdir` doesn't resolve on PATH — install it so agents can run it:\n" +
+          "  npm install -g @anish98821/taskdir   (or `taskdir install` from the .exe)\n",
+      );
+    }
   } else {
-    process.stdout.write("agent interface: MCP\n");
+    process.stdout.write("agent interface: MCP — skills use MCP tool calls\n");
   }
+}
+
+// The CLI interface only works if agents can actually invoke `taskdir` —
+// scan PATH for the binary so init can hint at a global install when missing.
+function taskdirOnPath(): boolean {
+  const exts =
+    process.platform === "win32"
+      ? (process.env.PATHEXT || ".EXE;.CMD;.BAT;.COM").toLowerCase().split(";")
+      : [""];
+  for (const dir of (process.env.PATH || "").split(path.delimiter)) {
+    if (!dir) continue;
+    for (const ext of exts) {
+      if (existsSync(path.join(dir, `taskdir${ext}`))) return true;
+    }
+  }
+  return false;
 }
 
 // ---------------------------------------------------------------------------
@@ -1232,20 +1250,58 @@ export interface RunOpts {
   internalLaunchArgs?: string[];
 }
 
+// Addresses to probe with a TCP connect when checking if a port is taken.
+// A server bound to a wildcard or either loopback address shadows
+// `localhost:<port>` in the browser, so loopback binds probe both families.
+function probeHostsFor(host: string): string[] {
+  if (
+    host === "0.0.0.0" ||
+    host === "::" ||
+    host === "127.0.0.1" ||
+    host === "::1" ||
+    host === "localhost"
+  ) {
+    return ["127.0.0.1", "::1"];
+  }
+  return [host];
+}
+
+// True when something accepts TCP connections on host:port. A plain bind
+// test is not enough: on Windows, binding a port another process already
+// listens on can silently "succeed" (no SO_EXCLUSIVEADDRUSE), so a busy
+// port looks free and the existing server keeps receiving the traffic.
+function acceptsConnections(host: string, port: number): Promise<boolean> {
+  return new Promise((resolve) => {
+    const socket = net.connect({ host, port });
+    const done = (result: boolean) => {
+      socket.destroy();
+      resolve(result);
+    };
+    socket.once("connect", () => done(true));
+    socket.once("error", () => done(false));
+    socket.setTimeout(1000, () => done(false));
+  });
+}
+
 async function findFreePort(
   host: string,
   startPort: number,
   maxAttempts = 20,
 ): Promise<number> {
+  const probeHosts = probeHostsFor(host);
   for (let i = 0; i < maxAttempts; i++) {
     const port = startPort + i;
-    const free = await new Promise<boolean>((resolve) => {
+    const bindable = await new Promise<boolean>((resolve) => {
       const s = net.createServer();
       s.once("error", () => resolve(false));
       s.once("listening", () => s.close(() => resolve(true)));
       s.listen(port, host);
     });
-    if (free) return port;
+    if (!bindable) continue;
+    const taken = (
+      await Promise.all(probeHosts.map((h) => acceptsConnections(h, port)))
+    ).some(Boolean);
+    if (!taken) return port;
   }
   throw new Error(
     `no free port in range ${startPort}-${startPort + maxAttempts - 1}`,
@@ -1385,6 +1441,12 @@ export async function runWeb(argv: string[], opts: RunOpts): Promise<void> {
   }
 
   const url = `http://${displayHost(host)}:${port}`;
+  // Readiness pings go to the concrete bind address, not `localhost` — the
+  // browser URL and the ping must not resolve to different loopback
+  // families, or another server could answer for our child.
+  const bracketed = host.includes(":") ? `[${host}]` : host;
+  const pingBase = host === "0.0.0.0" ? "127.0.0.1" : bracketed;
+  const pingUrlStr = `http://${pingBase}:${port}`;
   const spinner = new Spinner();
   spinner.start(
     port === startPort
@@ -1425,7 +1487,7 @@ export async function runWeb(argv: string[], opts: RunOpts): Promise<void> {
   process.on("SIGTERM", forward("SIGTERM"));
 
   try {
-    await waitForServer(url, 60_000, () => childExited);
+    await waitForServer(pingUrlStr, 60_000, () => childExited);
   } catch (e) {
     spinner.stop();
     if (!childExited) child.kill();

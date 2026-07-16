@@ -14,7 +14,6 @@ import { AppSidebar } from "./AppSidebar";
 import { Hotkeys } from "./Hotkeys";
 import { NewTaskButton } from "./NewTaskButton";
 import { NewTaskDraft } from "./NewTaskDraft";
-import { NotificationsDrawer } from "./NotificationsDrawer";
 import { ResizablePane } from "./ResizablePane";
 import { SearchBar } from "./SearchBar";
 import { SortDropdown } from "./SortDropdown";
@@ -81,9 +80,6 @@ export async function TasksPage({
       <SidebarInset className="min-h-0">
         <header className="flex h-12 items-center gap-3 border-b border-border px-3">
           <SidebarTrigger className="size-7" />
-          <div className="ml-auto">
-            <NotificationsDrawer tasks={all} />
-          </div>
         </header>
         <div className="flex min-h-0 flex-1 overflow-hidden">
           <div className="flex min-w-0 flex-1 flex-col overflow-hidden">

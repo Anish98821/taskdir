@@ -1,7 +1,5 @@
 // Statuses are user-configurable (see src/lib/statuses.ts). A status is stored
-// as its id string; STATUSES lists the default ids seeded on init. Two more
-// ids carry UI behavior when configured: awaiting_approval (approve-plan
-// banner) and blocked (clarification banner).
+// as its id string; STATUSES lists the default ids seeded on init.
 export type Status = string;
 export const STATUSES: Status[] = ["pending", "in_progress", "done"];
 

@@ -36,7 +36,7 @@ tasks/
 `status` contains one value:
 
 ```text
-pending | in_progress | awaiting_approval | blocked | done
+pending | in_progress | blocked | done
 ```
 
 `meta.toml` currently stores:
@@ -87,7 +87,6 @@ The app uses Next.js App Router. `src/app/page.tsx` is intentionally thin and de
 - `MetaEditor.tsx`: optimistic metadata editing
 - `FileTabs.tsx`: file tab controls and file operations
 - `FileEditor.tsx`: markdown edit/preview and conflict-aware save
-- `NotificationsDrawer.tsx`: blocked and approval notifications
 - `NewTaskDraft.tsx`: full task creation panel
 
 Server actions in `src/app/actions.ts` bridge client components to server-side mutations. They call the task service and then `refresh()` or `redirect()` as needed.
@@ -143,18 +142,9 @@ Tool output is plain text JSON or short acknowledgements so it stays easy for ag
 - creates the configured task directory
 - creates `.taskdir/README.md` if missing
 - optionally appends the tasks directory to `.gitignore`
-- asks whether agents should talk to taskdir over **MCP** or via the **CLI** (`--interface`), then tailors the installed skill accordingly and, for MCP, registers the server in the selected client configs
+- asks whether agents should talk to taskdir via the **CLI** (the default) or over **MCP** (`--interface`), then tailors the installed skill accordingly and, for MCP, registers the server in the selected client configs
 
 The default task directory is `.taskdir/tasks`, but `--tasks-dir` can point elsewhere.
-
-## Notifications
-
-Notifications are derived, not stored:
-
-- `blocked`: task status is `blocked`
-- `approval`: task status is `awaiting_approval`
-
-Both clear only when the underlying status changes.
 
 ## Import Boundaries
 

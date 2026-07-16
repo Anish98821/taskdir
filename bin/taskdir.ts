@@ -12,7 +12,7 @@ import { pathToFileURL } from "node:url";
 
 import { isTaskToolCommand, runInit, runMcp, runTaskCli, runWeb } from "./cli.ts";
 
-const VERSION = "0.7.0";
+const VERSION = "0.8.0";
 
 function printHelp(): void {
   process.stdout.write(

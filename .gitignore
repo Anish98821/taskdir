@@ -40,8 +40,10 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# personal claude-code settings (per-user hooks etc.)
-.claude/
+# personal claude-code settings (per-user hooks etc.) — but shared project
+# skills are tracked
+.claude/*
+!.claude/skills/
 
 # local browser-mcp screenshots / session state
 .browser-sessions/

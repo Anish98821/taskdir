@@ -41,9 +41,9 @@ export function AppSidebar({ total, projectName }: Props) {
           <img
             src="/logo.svg"
             alt="taskdir"
-            width={175}
-            height={142}
-            className="h-5 w-auto shrink-0 invert"
+            width={230}
+            height={230}
+            className="h-5 w-auto shrink-0"
           />
           <span
             className="truncate text-sm font-semibold group-data-[collapsible=icon]:hidden"

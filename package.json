@@ -1,6 +1,6 @@
 {
   "name": "@anish98821/taskdir",
-  "version": "0.8.0",
+  "version": "0.8.1",
   "description": "Local task substrate for AI coding agents. Filesystem-backed, MCP-native.",
   "license": "MIT",
   "repository": "github:Anish98821/taskdir",

@@ -2,6 +2,12 @@
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [SemVer](https://semver.org/).
 
+## 0.8.1 — 2026-07-20
+
+### Changed
+
+- **New brand mark.** The app icon/favicon (sidebar, browser tab, docs site) and the README/GitHub banner now use the new logo.
+
 ## 0.8.0 — 2026-07-16
 
 ### Removed

@@ -1,0 +1,434 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>taskdir: reference</title>
+<meta name="description" content="Full CLI, MCP tool, hooks, modes, and statuses reference for taskdir — the filesystem-backed task tracker for AI coding agents." />
+<meta property="og:title" content="taskdir: reference" />
+<meta property="og:description" content="Full CLI, MCP tool, hooks, modes, and statuses reference for taskdir." />
+<meta property="og:image" content="https://raw.githubusercontent.com/Anish98821/taskdir/main/banner.png" />
+<meta name="twitter:card" content="summary_large_image" />
+<link rel="icon" href="favicon.jpg" type="image/jpeg" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --paper: #000000;
+    --paper-2: #141311;
+    --ink: #EFEAE0;
+    --ink-2: #8A8479;
+    --rule: #26231F;
+    --accent: #E8563D;
+    --accent-soft: #3A231E;
+    --ok: #7BB073;
+    --warn: #D7A64A;
+  }
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) {
+      --paper: #F6F3EC;
+      --paper-2: #ECE7DB;
+      --ink: #1A1817;
+      --ink-2: #6B6560;
+      --rule: #D9D2C1;
+      --accent: #C13F2B;
+      --accent-soft: #EAD1CA;
+      --ok: #4E7A46;
+      --warn: #B27A1E;
+    }
+  }
+  :root[data-theme="light"] {
+    --paper: #F6F3EC;
+    --paper-2: #ECE7DB;
+    --ink: #1A1817;
+    --ink-2: #6B6560;
+    --rule: #D9D2C1;
+    --accent: #C13F2B;
+    --accent-soft: #EAD1CA;
+    --ok: #4E7A46;
+    --warn: #B27A1E;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: var(--paper); color: var(--ink); }
+  body {
+    font-family: "Fraunces", ui-serif, Georgia, serif;
+    font-optical-sizing: auto;
+    font-variation-settings: "opsz" 24;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    line-height: 1.5;
+    font-size: 17px;
+  }
+  ::selection { background: var(--accent); color: var(--paper); }
+  a { color: inherit; text-decoration: none; border-bottom: 1px solid var(--rule); transition: border-color .15s; }
+  a:hover { border-bottom-color: var(--accent); }
+  a:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 2px; }
+  code, .mono { font-family: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace; }
+
+  .wrap { max-width: 1120px; margin: 0 auto; padding: 0 32px; }
+  @media (max-width: 640px) { .wrap { padding: 0 20px; } }
+
+  header.top {
+    border-bottom: 1px solid var(--rule);
+    padding: 18px 0;
+    position: sticky; top: 0;
+    background: color-mix(in oklab, var(--paper) 92%, transparent);
+    backdrop-filter: saturate(1.2) blur(8px);
+    -webkit-backdrop-filter: saturate(1.2) blur(8px);
+    z-index: 10;
+  }
+  .top-row { display: flex; align-items: center; justify-content: space-between; gap: 20px; }
+  .brand { display: flex; align-items: center; }
+  .brand img { height: 52px; width: auto; display: block; }
+  @media (max-width: 640px) { .brand img { height: 40px; } }
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) .brand img { filter: invert(1); }
+  }
+  :root[data-theme="light"] .brand img { filter: invert(1); }
+  :root[data-theme="dark"] .brand img { filter: none; }
+  .top-links { display: flex; align-items: center; gap: 20px; }
+  .nav-link {
+    font-family: "IBM Plex Mono"; font-size: 13px; color: var(--ink-2);
+    border: none;
+  }
+  .nav-link:hover { color: var(--ink); }
+  .gh-link, .npm-link {
+    display: inline-flex; align-items: center; justify-content: center;
+    color: var(--ink-2); border: none; padding: 4px;
+    transition: color .15s;
+  }
+  .gh-link:hover { color: var(--ink); }
+  .gh-link:focus-visible, .npm-link:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 4px; }
+
+  .path-head {
+    font-family: "IBM Plex Mono";
+    font-size: 13px;
+    color: var(--ink-2);
+    padding: 0 0 28px;
+    display: flex; align-items: baseline; gap: 14px;
+    margin-top: 96px;
+  }
+  .path-head .dot { color: var(--accent); }
+  .path-head::after { content: ""; flex: 1; height: 1px; background: var(--rule); align-self: center; }
+  section:first-of-type .path-head { margin-top: 0; }
+  section { padding-bottom: 8px; }
+
+  .hero { padding: 56px 0 8px; }
+  h1.thesis {
+    font-family: "IBM Plex Mono";
+    font-weight: 500;
+    font-size: clamp(38px, 6vw, 68px);
+    line-height: 1.02;
+    letter-spacing: -.035em;
+    margin: 0 0 20px;
+    color: var(--ink);
+  }
+  .subhead {
+    font-family: "Fraunces", ui-serif, Georgia, serif;
+    font-size: clamp(20px, 2.2vw, 24px);
+    line-height: 1.4;
+    color: var(--ink-2);
+    margin: 0 0 8px;
+    max-width: 56ch;
+    font-weight: 400;
+    letter-spacing: -.01em;
+  }
+  .back {
+    font-family: "IBM Plex Mono"; font-size: 13px; color: var(--ink-2);
+  }
+
+  .prose p { font-size: 16.5px; line-height: 1.6; color: var(--ink); max-width: 74ch; margin: 0 0 16px; }
+  .prose p:last-child { margin-bottom: 0; }
+  .prose code { background: var(--paper-2); padding: 1px 6px; border-radius: 2px; font-size: 14px; color: var(--ink); }
+
+  pre.code {
+    font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+    font-size: 13.5px; line-height: 1.65;
+    background: var(--paper-2); border: 1px solid var(--rule); border-radius: 4px;
+    padding: 18px 20px; overflow-x: auto; color: var(--ink);
+    margin: 0 0 20px;
+  }
+  pre.code:last-child { margin-bottom: 0; }
+  pre.code .c { color: var(--ink-2); }
+  pre.code .k { color: var(--accent); }
+
+  h2.h {
+    font-family: "IBM Plex Mono"; font-weight: 500; font-size: 20px;
+    letter-spacing: -.01em; margin: 40px 0 14px; color: var(--ink);
+  }
+  section h2.h:first-of-type { margin-top: 0; }
+
+  dl.kv { margin: 0 0 20px; display: flex; flex-direction: column; gap: 16px; }
+  dl.kv .row { display: grid; grid-template-columns: minmax(120px, 200px) minmax(0, 1fr); gap: 24px; align-items: baseline; }
+  @media (max-width: 640px) { dl.kv .row { grid-template-columns: 1fr; gap: 4px; } }
+  dl.kv dt { font-family: "IBM Plex Mono"; font-size: 14px; color: var(--accent); margin: 0; }
+  dl.kv dd { margin: 0; font-size: 15.5px; color: var(--ink); line-height: 1.5; }
+
+  .tool-grid {
+    list-style: none; margin: 0 0 20px; padding: 0;
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    border-top: 1px solid var(--rule);
+    border-left: 1px solid var(--rule);
+  }
+  @media (max-width: 780px) { .tool-grid { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 480px) { .tool-grid { grid-template-columns: 1fr; } }
+  .tool-grid li {
+    padding: 16px 18px;
+    border-right: 1px solid var(--rule);
+    border-bottom: 1px solid var(--rule);
+    display: flex; flex-direction: column; gap: 6px;
+  }
+  .tool-grid .name {
+    font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+    font-size: 14px; color: var(--ink); letter-spacing: -.005em;
+  }
+  .tool-grid .desc { font-size: 13px; color: var(--ink-2); line-height: 1.45; }
+
+  footer {
+    margin-top: 96px; padding: 32px 0 40px;
+    border-top: 1px solid var(--rule);
+    font-family: "IBM Plex Mono"; font-size: 13px; color: var(--ink-2);
+    display: flex; align-items: center; justify-content: space-between; gap: 20px; flex-wrap: wrap;
+  }
+  footer a { border: none; color: var(--ink-2); display: inline-flex; align-items: center; }
+  footer a:hover { color: var(--ink); }
+  footer .links { display: flex; gap: 16px; align-items: center; }
+  footer .links a { padding: 4px; }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap top-row">
+    <a href="./" class="brand" aria-label="taskdir home" style="border: none;">
+      <img src="banner.png" alt="taskdir" />
+    </a>
+    <div class="top-links">
+      <a class="nav-link" href="./">home</a>
+      <a class="gh-link" href="https://github.com/Anish98821/taskdir" aria-label="View on GitHub">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor" aria-hidden="true">
+          <path d="M12 .5C5.65.5.5 5.65.5 12a11.5 11.5 0 0 0 7.86 10.92c.58.1.79-.25.79-.56v-2c-3.2.7-3.88-1.37-3.88-1.37-.52-1.34-1.28-1.7-1.28-1.7-1.05-.72.08-.7.08-.7 1.16.08 1.77 1.19 1.77 1.19 1.03 1.76 2.7 1.25 3.36.95.1-.75.4-1.26.73-1.55-2.55-.29-5.24-1.28-5.24-5.7 0-1.26.45-2.29 1.19-3.1-.12-.29-.52-1.47.11-3.06 0 0 .97-.31 3.18 1.18a11 11 0 0 1 5.79 0c2.21-1.49 3.18-1.18 3.18-1.18.63 1.59.23 2.77.12 3.06.74.81 1.19 1.84 1.19 3.1 0 4.43-2.7 5.4-5.27 5.69.41.36.78 1.06.78 2.14v3.17c0 .31.21.67.8.55A11.5 11.5 0 0 0 23.5 12C23.5 5.65 18.35.5 12 .5z"/>
+        </svg>
+      </a>
+      <a class="npm-link" href="https://www.npmjs.com/package/@anish98821/taskdir" aria-label="View on npm">
+        <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true">
+          <rect x="5" y="5" width="14" height="14" fill="#ffffff"/>
+          <path fill="#C60000" d="M1.763 0C.786 0 0 .786 0 1.763v20.474C0 23.214.786 24 1.763 24h20.474c.977 0 1.763-.786 1.763-1.763V1.763C24 .786 23.214 0 22.237 0zM5.13 5.323l13.837.019-.009 13.836h-3.464l.01-10.382h-3.456L12.04 19.17H5.113z"/>
+        </svg>
+      </a>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- HERO -->
+  <section class="hero" aria-labelledby="thesis">
+    <h1 class="thesis" id="thesis">reference</h1>
+    <p class="subhead">Every CLI command, MCP tool, mode, status, and hook — the detail that doesn't fit on the front page.</p>
+  </section>
+
+  <!-- LAYOUT -->
+  <section id="layout" aria-labelledby="layout-h">
+    <div class="path-head" id="layout-h"><span class="dot">●</span> layout/</div>
+    <div class="prose">
+      <p>Tasks live as folders on disk. <code>git diff</code>, <code>cp -r</code>, <code>grep -r</code> all work. Agents can use the CLI, MCP, or edit files directly.</p>
+    </div>
+    <pre class="code">tasks/
+  0042-add-auth/
+    status              <span class="c"># pending | in_progress | blocked | done</span>
+    meta.toml           <span class="c"># title, created_at, priority, mode, tags, agent</span>
+    context.md          <span class="c"># optional</span>
+    clarification.md    <span class="c"># present when status=blocked</span></pre>
+  </section>
+
+  <!-- CLI -->
+  <section id="cli" aria-labelledby="cli-h">
+    <div class="path-head" id="cli-h"><span class="dot">●</span> cli/</div>
+    <div class="prose">
+      <p>A single <code>taskdir</code> executable is installed by the npm package (and by the SEA build's <code>taskdir install</code>). Each subcommand operates on the current working directory.</p>
+    </div>
+    <pre class="code">taskdir init [options]         initialise .taskdir/ in the current directory
+  --tasks-dir &lt;path&gt;           tasks folder (default: .taskdir/tasks)
+  --interface &lt;cli|mcp&gt;        how agents talk to taskdir (default: cli; asked interactively)
+  --cli                        shorthand for --interface cli
+  -y, --yes                    skip prompts
+  -h, --help
+
+taskdir mcp                    run the stdio MCP server for the current project
+
+taskdir tools                  list the task tools runnable from the shell
+taskdir &lt;tool&gt; [options]       run any MCP tool directly (see `taskdir tools`)
+
+taskdir web [options]          launch the web UI (auto-opens the browser)
+  -p, --port &lt;n&gt;               default 3000, auto-increments if busy
+      --host &lt;addr&gt;            default 127.0.0.1
+      --stop                   stop the instance registered for the current dir
+      --stop-all               stop every running instance
+  -h, --help
+
+taskdir install                copy the exe into %LOCALAPPDATA% and add to user PATH (Windows)
+taskdir version
+taskdir help</pre>
+  </section>
+
+  <!-- TASK TOOLS -->
+  <section id="tools" aria-labelledby="tools-h">
+    <div class="path-head" id="tools-h"><span class="dot">●</span> taskdir/tools/</div>
+    <div class="prose">
+      <p>Agents talk to taskdir by running shell commands — no client wiring required:</p>
+    </div>
+    <pre class="code">taskdir tools                              <span class="c"># list the commands</span>
+taskdir create_task --title "Fix login" --mode bugfix --tags auth,frontend
+taskdir list_tasks --status in_progress
+taskdir update_status 0001 done            <span class="c"># required fields can be positional</span>
+taskdir get_task 0001</pre>
+    <div class="prose"><p>The full surface:</p></div>
+    <ul class="tool-grid">
+      <li><span class="name">list_tasks</span><span class="desc">[--status &lt;s&gt;] [--tag &lt;t&gt;] [--priority &lt;p&gt;]</span></li>
+      <li><span class="name">get_task</span><span class="desc">&lt;id&gt; — returns all files concatenated</span></li>
+      <li><span class="name">create_task</span><span class="desc">--title "..." [--context ...] [--priority ...] [--mode ...] [--tags a,b] [--agent ...]</span></li>
+      <li><span class="name">update_status</span><span class="desc">&lt;id&gt; &lt;status&gt;</span></li>
+      <li><span class="name">update_meta</span><span class="desc">&lt;id&gt; [--title ...] [--priority ...] [--mode ...] [--tags a,b] [--agent ...]</span></li>
+      <li><span class="name">append_to_file</span><span class="desc">&lt;id&gt; &lt;filename&gt; &lt;content&gt;</span></li>
+      <li><span class="name">create_file</span><span class="desc">&lt;id&gt; &lt;filename&gt;</span></li>
+      <li><span class="name">rename_file</span><span class="desc">&lt;id&gt; &lt;old_name&gt; &lt;new_name&gt;</span></li>
+      <li><span class="name">delete_file</span><span class="desc">&lt;id&gt; &lt;filename&gt;</span></li>
+      <li><span class="name">list_modes</span><span class="desc">project-defined task modes</span></li>
+      <li><span class="name">list_agents</span><span class="desc">registered agents</span></li>
+      <li><span class="name">register_agent</span><span class="desc">--name "..." --provider &lt;provider&gt; [--id ...]</span></li>
+      <li><span class="name">unregister_agent</span><span class="desc">&lt;id&gt;</span></li>
+    </ul>
+    <div class="prose">
+      <p>Run <code>taskdir &lt;tool&gt; --help</code> for any one. Every command above is also an MCP tool with the same name and fields, served by the stdio server (<code>taskdir mcp</code>) for clients that prefer it (Claude Code, Cursor, custom). Both surfaces are derived from the same schema, so they never drift.</p>
+    </div>
+  </section>
+
+  <!-- WEB UI -->
+  <section id="web" aria-labelledby="web-h">
+    <div class="path-head" id="web-h"><span class="dot">●</span> web/</div>
+    <ul class="tool-grid" style="grid-template-columns: repeat(2, 1fr);">
+      <li><span class="name">list view</span><span class="desc">Status/priority/tags at a glance.</span></li>
+      <li><span class="name">detail view</span><span class="desc">Edits markdown files with basic conflict detection.</span></li>
+      <li><span class="name">live updates</span><span class="desc">chokidar → SSE, no refresh needed.</span></li>
+      <li><span class="name">settings</span><span class="desc">Agents / modes / statuses / hooks / project. Edit/preview, sidebar, pane width, and new-task defaults persist across refreshes.</span></li>
+    </ul>
+  </section>
+
+  <!-- MODES -->
+  <section id="modes" aria-labelledby="modes-h">
+    <div class="path-head" id="modes-h"><span class="dot">●</span> modes &amp; strategies/</div>
+    <div class="prose">
+      <p>Every task has a <strong>mode</strong> describing its class of work. The three built-ins (<code>plan</code>, <code>bugfix</code>, <code>research</code>) are just defaults — rename them, swap icons, or add your own in the web UI (Settings → modes) or <code>.taskdir/modes.toml</code>:</p>
+    </div>
+    <pre class="code">[[mode]]
+id = "triage"
+label = "Triage"
+icon = "bug"</pre>
+    <div class="prose">
+      <p>Each mode can carry a <strong>strategy</strong> — markdown for how to approach that class of task — stored at <code>.taskdir/strategies/&lt;mode_id&gt;.md</code>. When an agent calls <code>get_task</code>, the strategy for the task's mode is appended to the output, so the guidance travels with the work. Edit strategies in Settings → modes.</p>
+    </div>
+  </section>
+
+  <!-- STATUSES -->
+  <section id="statuses" aria-labelledby="statuses-h">
+    <div class="path-head" id="statuses-h"><span class="dot">●</span> statuses/</div>
+    <div class="prose">
+      <p>Statuses are yours too. <code>taskdir init</code> seeds <code>pending</code>, <code>in_progress</code>, and <code>done</code>; relabel, recolor, remove, or add your own in the web UI (Settings → statuses) or <code>.taskdir/statuses.toml</code>:</p>
+    </div>
+    <pre class="code">[[status]]
+id = "in_review"
+label = "in review"
+color = "cyan"</pre>
+    <div class="prose">
+      <p>Tasks whose on-disk status is no longer configured stay visible (rendered neutral) — the files are the source of truth.</p>
+    </div>
+  </section>
+
+  <!-- HOOKS -->
+  <section id="hooks" aria-labelledby="hooks-h">
+    <div class="path-head" id="hooks-h"><span class="dot">●</span> hooks/</div>
+    <div class="prose">
+      <p>Run a shell command or POST a webhook when things happen. Configure in the web UI (Settings → hooks) or edit <code>.taskdir/hooks.toml</code> directly:</p>
+    </div>
+    <pre class="code">[[hook]]
+event = "task.status_changed"   <span class="c"># or "*" for every event</span>
+type = "command"
+command = "notify-send \"$TASKDIR_EVENT\""
+
+[[hook]]
+event = "*"
+type = "webhook"
+url = "https://example.com/taskdir"</pre>
+    <div class="prose">
+      <p>Events: <code>task.created</code>, <code>task.status_changed</code>, <code>task.updated</code>, <code>task.deleted</code>, <code>agent.registered</code>, <code>agent.unregistered</code>.</p>
+    </div>
+    <dl class="kv">
+      <div class="row"><dt>command hooks</dt><dd>get the event JSON on stdin, plus <code>TASKDIR_EVENT</code> and <code>TASKDIR_*</code> env vars for each scalar payload field (e.g. <code>TASKDIR_ID</code>).</dd></div>
+      <div class="row"><dt>webhook hooks</dt><dd>receive a JSON body <code>{ event, timestamp, data }</code>.</dd></div>
+    </dl>
+    <div class="prose">
+      <p>A command hook can point at a command/file to run, or carry <strong>inline code</strong> directly. In the web UI (Settings → hooks) toggle "inline code" for a proper code editor; on disk it's a <code>script</code> block. The engine writes the script to a temp file and runs it, honoring a shebang (<code>#!/usr/bin/env node</code>, <code>#!/bin/bash</code>, …) cross-platform, or falling back to the platform shell:</p>
+    </div>
+    <pre class="code">[[hook]]
+event = "task.created"
+type = "command"
+script = '''
+#!/usr/bin/env node
+console.log(`new task: ${process.env.TASKDIR_ID}`)
+'''</pre>
+    <div class="prose">
+      <p>Toggle a hook off without deleting it via the power button in Settings → hooks, or add <code>enabled = false</code> to its table. Hooks fire unless explicitly disabled:</p>
+    </div>
+    <pre class="code">[[hook]]
+event = "*"
+type = "webhook"
+url = "https://example.com/taskdir"
+enabled = false                  <span class="c"># keeps the config, stops it firing</span></pre>
+    <div class="prose">
+      <p>Firing is best-effort and non-blocking — a slow or failing hook never blocks the operation that triggered it (10s timeout).</p>
+    </div>
+  </section>
+
+  <!-- DEVELOPMENT -->
+  <section id="dev" aria-labelledby="dev-h">
+    <div class="path-head" id="dev-h"><span class="dot">●</span> development/</div>
+    <div class="prose"><p>Stack:</p></div>
+    <dl class="kv">
+      <div class="row"><dt>framework</dt><dd>Next.js 16 (App Router) + TypeScript</dd></div>
+      <div class="row"><dt>styling</dt><dd>Tailwind v4 + shadcn/ui</dd></div>
+      <div class="row"><dt>live updates</dt><dd>chokidar + SSE</dd></div>
+      <div class="row"><dt>MCP</dt><dd>hosted in-process alongside the Next.js app</dd></div>
+    </dl>
+    <div class="prose"><p>Run it locally:</p></div>
+    <pre class="code">pnpm install
+pnpm dev</pre>
+    <div class="prose">
+      <p>Open <code>http://localhost:3000</code>. Tasks live in <code>./tasks/</code> (or the <code>tasks_dir</code> from <code>.taskdir/config.toml</code>).</p>
+      <p>Checks:</p>
+    </div>
+    <pre class="code">npm test
+npm run lint
+npm run build</pre>
+    <div class="prose"><p>MCP stdio smoke test:</p></div>
+    <pre class="code">'{"jsonrpc":"2.0","id":1,"method":"initialize"}' | node --experimental-strip-types --no-warnings bin/taskdir.ts mcp
+'{"jsonrpc":"2.0","id":2,"method":"tools/list"}' | node --experimental-strip-types --no-warnings bin/taskdir.ts mcp</pre>
+    <div class="prose">
+      <p>See <a href="https://github.com/Anish98821/taskdir/blob/main/ARCHITECTURE.md">ARCHITECTURE.md</a> and <a href="https://github.com/Anish98821/taskdir/blob/main/USER_MANUAL.md">USER_MANUAL.md</a> for more.</p>
+    </div>
+  </section>
+
+  <footer>
+    <div>MIT · taskdir</div>
+    <div class="links">
+      <a href="./">home</a>
+      <a href="https://github.com/Anish98821/taskdir">github</a>
+    </div>
+  </footer>
+
+</main>
+
+</body>
+</html>

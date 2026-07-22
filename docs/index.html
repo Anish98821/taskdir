@@ -81,9 +81,13 @@
     z-index: 10;
   }
   .top-row { display: flex; align-items: center; justify-content: space-between; gap: 20px; }
-  .brand { display: flex; align-items: center; }
-  .brand img { height: 52px; width: auto; display: block; }
-  @media (max-width: 640px) { .brand img { height: 40px; } }
+  .brand { display: flex; align-items: center; gap: 10px; }
+  .brand img { height: 32px; width: auto; display: block; }
+  .brand .brand-text {
+    font-family: "IBM Plex Mono"; font-weight: 500; font-size: 17px;
+    letter-spacing: -.01em; color: var(--ink);
+  }
+  @media (max-width: 640px) { .brand img { height: 26px; } .brand .brand-text { font-size: 15px; } }
   @media (prefers-color-scheme: light) {
     :root:not([data-theme="dark"]) .brand img { filter: invert(1); }
   }
@@ -144,38 +148,48 @@
   .lede code { color: var(--ink); }
   .lede em { font-style: italic; color: var(--ink-2); }
 
-  /* ------- fs viewer (two raw mono columns, hair rule between) ------- */
+  /* ------- fs viewer (terminal card) ------- */
   .fs {
     font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace;
     font-size: 14px; line-height: 1.75;
     color: var(--ink);
-    margin: 12px 0 0;
+    margin: 32px 0 0;
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    gap: 0;
+    grid-template-columns: minmax(170px, 220px) minmax(0, 1fr);
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+    background: var(--paper-2);
+    overflow: hidden;
   }
   @media (max-width: 780px) { .fs { grid-template-columns: 1fr; } }
-  .fs .left { padding-right: 28px; }
-  .fs .right {
-    padding-left: 28px; border-left: 1px solid var(--rule); min-width: 0;
-  }
+  .fs .left-pane { border-right: 1px solid var(--rule); min-width: 0; }
+  .fs .right-pane { min-width: 0; }
   @media (max-width: 780px) {
-    .fs .right { display: none; }
-    .fs .left { padding-right: 0; }
+    .fs .right-pane { display: none; }
+    .fs .left-pane { border-right: none; }
     .fs .row { cursor: default; }
     .fs .row:hover .mk::before,
     .fs .row.active .mk::before,
     .fs .row:focus-visible .mk::before { content: "  "; color: transparent; }
   }
-  .fs .row { display: block; white-space: pre; cursor: pointer; }
+  .fs .pane-head {
+    font-size: 11.5px; color: var(--ink-2);
+    padding: 10px 16px; border-bottom: 1px solid var(--rule);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .fs .explorer-label { letter-spacing: .1em; text-transform: uppercase; }
+  .fs .left { padding: 16px; overflow: hidden; }
+  .fs .row {
+    display: block; white-space: pre; cursor: pointer;
+    overflow: hidden; text-overflow: ellipsis;
+  }
   .fs .row .mk::before { content: "  "; color: transparent; }
   .fs .row:hover .mk::before,
   .fs .row:focus-visible .mk::before { content: "» "; color: var(--accent); }
   .fs .row:focus-visible { outline: none; }
   .fs .row.dir { cursor: default; }
   .fs .row.dir:hover .mk::before { content: "  "; color: transparent; }
-  .fs .path { color: var(--ink-2); margin-bottom: 14px; white-space: pre; overflow: hidden; text-overflow: ellipsis; }
-  .fs .body { white-space: pre-wrap; word-break: break-word; }
+  .fs .body { padding: 16px; white-space: pre-wrap; word-break: break-word; }
   .fs .body .k { color: var(--accent); }
   .fs .body .v { color: var(--ink); }
   .fs .body .h { color: var(--ink); font-weight: 600; }
@@ -396,14 +410,77 @@
   footer a:hover { color: var(--ink); }
   footer .links { display: flex; gap: 16px; align-items: center; }
   footer .links a { padding: 4px; }
+
+  /* ------- interactions ------- */
+  .col { transition: background-color .3s ease; }
+  .col:hover { background: var(--paper-2); }
+  .col h3 { transition: color .2s ease; }
+  .col:hover h3 { color: var(--accent); }
+
+  .tool-grid li { transition: background-color .2s ease; }
+  .tool-grid li:hover { background: var(--paper-2); }
+  .tool-grid .name { transition: color .2s ease; }
+  .tool-grid li:hover .name { color: var(--accent); }
+
+.copy-btn { transition: color .15s, border-color .15s, transform .15s; }
+  .copy-btn:active { transform: scale(.9); }
+  .icard .cmd-row .copy-btn { transition: color .15s, transform .15s; }
+  .icard .cmd-row .copy-btn:active { transform: scale(.88); }
+
+  /* ------- motion (entrance + scroll reveal) ------- */
+  @media (prefers-reduced-motion: no-preference) {
+    .hero .thesis, .hero .subhead, .hero .fs, .hero .install-row {
+      opacity: 0;
+      animation: heroIn .7s cubic-bezier(.16,.84,.44,1) forwards;
+    }
+    .hero .thesis { animation-delay: .02s; }
+    .hero .subhead { animation-delay: .13s; }
+    .hero .fs { animation-delay: .24s; }
+    .hero .install-row { animation-delay: .35s; }
+    @keyframes heroIn {
+      from { opacity: 0; transform: translateY(14px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    html.motion-ready main > section:not(.hero) {
+      opacity: 0;
+      transform: translateY(18px);
+      transition: opacity .6s cubic-bezier(.16,.84,.44,1), transform .6s cubic-bezier(.16,.84,.44,1);
+    }
+    html.motion-ready main > section.in-view {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .path-head .dot {
+      display: inline-block;
+      animation: dotPulse 3.2s ease-in-out infinite;
+    }
+    @keyframes dotPulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: .5; }
+    }
+
+    .fs .body.fs-fade { animation: fsFade .3s ease; }
+    @keyframes fsFade {
+      from { opacity: 0; transform: translateY(3px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  }
 </style>
 </head>
 <body>
+<script>
+  if (window.matchMedia("(prefers-reduced-motion: no-preference)").matches) {
+    document.documentElement.classList.add("motion-ready");
+  }
+</script>
 
 <header class="top">
   <div class="wrap top-row">
     <a href="./" class="brand" aria-label="taskdir home" style="border: none;">
-      <img src="banner.png" alt="taskdir" />
+      <img src="icon.svg" alt="" />
+      <span class="brand-text">taskdir</span>
     </a>
     <div class="top-links">
       <a class="gh-link" href="https://github.com/Anish98821/taskdir" aria-label="View on GitHub">
@@ -429,9 +506,12 @@
     <p class="subhead">A local filesystem based task tracker for AI agents.</p>
 
     <div class="fs" id="fs">
-      <div class="left" id="fsLeft"></div>
-      <div class="right">
-        <div class="path" id="fsPath"></div>
+      <div class="left-pane">
+        <div class="pane-head explorer-label">explorer</div>
+        <div class="left" id="fsLeft"></div>
+      </div>
+      <div class="right-pane">
+        <div class="pane-head" id="fsPath"></div>
         <div class="body" id="fsBody"></div>
       </div>
     </div>
@@ -669,6 +749,9 @@ created_at = 2026-07-06T16:05:00Z` },
     const r = rows[i];
     pathEl.innerHTML = `<span class="prompt">$</span>cat ${escape(r.path)}`;
     bodyEl.innerHTML = render(r.kind, r.body);
+    bodyEl.classList.remove("fs-fade");
+    void bodyEl.offsetWidth;
+    bodyEl.classList.add("fs-fade");
   }
 
   const defaultIdx = rows.findIndex(r => r.path === "tasks/0042-add-auth/context.md");
@@ -684,6 +767,19 @@ created_at = 2026-07-06T16:05:00Z` },
       } catch (e) {}
     });
   });
+
+  // ---------- scroll reveal ----------
+  if (document.documentElement.classList.contains("motion-ready") && "IntersectionObserver" in window) {
+    const revealObserver = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add("in-view");
+          revealObserver.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.12, rootMargin: "0px 0px -60px 0px" });
+    document.querySelectorAll("main > section:not(.hero)").forEach(s => revealObserver.observe(s));
+  }
 </script>
 
 </body>

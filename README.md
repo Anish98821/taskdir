@@ -2,6 +2,13 @@
   <img src="https://raw.githubusercontent.com/Anish98821/taskdir/main/banner.png" alt="taskdir" width="600" />
 </p>
 
+<p align="center">
+  <a href="https://www.npmjs.com/package/@anish98821/taskdir"><img src="https://img.shields.io/npm/v/@anish98821/taskdir?style=flat-square&color=cb3837&logo=npm&logoColor=white" alt="npm version" /></a>
+  <a href="https://www.npmjs.com/package/@anish98821/taskdir"><img src="https://img.shields.io/npm/l/@anish98821/taskdir?style=flat-square&color=blue" alt="MIT license" /></a>
+  <a href="https://github.com/Anish98821/taskdir/actions/workflows/release.yml"><img src="https://img.shields.io/github/actions/workflow/status/Anish98821/taskdir/release.yml?style=flat-square&label=release" alt="release status" /></a>
+  <img src="https://img.shields.io/badge/MCP-native-6e56cf?style=flat-square" alt="MCP native" />
+</p>
+
 # Taskdir
 
 Filesystem-backed task tracker for AI agents. Agents drive it from the shell with the `taskdir` CLI (the same surface is also exposed over MCP); a small web UI keeps the human in the loop.

@@ -2,11 +2,12 @@
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [SemVer](https://semver.org/).
 
-## Unreleased
+## 0.9.0 — 2026-11-16
 
 ### Changed
 
 - **`init` now ignores the whole `.taskdir/` folder.** Previously only the tasks directory was added to `.gitignore`, leaving `config.toml`, `statuses.toml`, and `.taskdir/README.md` tracked. A `--tasks-dir` pointing outside `.taskdir/` still gets its own entry.
+- **README rewritten** around install and a quickstart, with a web UI screenshot. The full hooks reference moved to `USER_MANUAL.md`.
 
 ### Fixed
 

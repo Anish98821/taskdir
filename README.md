@@ -1,5 +1,8 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/Anish98821/taskdir/main/banner.png" alt="taskdir" width="600" />
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/Anish98821/taskdir/main/docs/banner-dark.svg" />
+    <img src="https://raw.githubusercontent.com/Anish98821/taskdir/main/docs/banner-light.svg" alt="taskdir: local-first tasks for you and your coding agent" width="600" />
+  </picture>
 </p>
 
 <p align="center">
@@ -17,10 +20,7 @@
 
 # taskdir
 
-**A task tracker that you and your AI coding agent share, living right inside your project.**
-
-Tasks are plain folders and markdown on disk, so there's no account, no server to
-host, and nothing to sync.
+**Tasks are folders on disk, created instantly. No account, no server, nothing to sync.**
 
 - **Works with your agent.** Claude Code, Codex, Cursor, Gemini, or anything that can
   run a shell command. MCP is there too if you prefer it.

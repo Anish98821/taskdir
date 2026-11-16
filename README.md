@@ -9,243 +9,158 @@
   <img src="https://img.shields.io/badge/MCP-native-6e56cf?style=flat-square" alt="MCP native" />
 </p>
 
-# Taskdir
+<p align="center">
+  <a href="https://anish98821.github.io/taskdir/">Website</a> ·
+  <a href="https://github.com/Anish98821/taskdir/blob/main/USER_MANUAL.md">User manual</a> ·
+  <a href="https://github.com/Anish98821/taskdir/blob/main/CHANGELOG.md">Changelog</a>
+</p>
 
-Filesystem-backed task tracker for AI agents. Agents drive it from the shell with the `taskdir` CLI (the same surface is also exposed over MCP); a small web UI keeps the human in the loop.
+# taskdir
 
-## Layout
+**A task tracker that you and your AI coding agent share, living right inside your project.**
 
-```
-tasks/
-  0042-add-auth/
-    status              # pending | in_progress | blocked | done
-    meta.toml           # title, created_at, priority, mode, tags, agent
-    context.md          # optional
-    clarification.md    # present when status=blocked
-```
+Tasks are plain folders and markdown on disk, so there's no account, no server to
+host, and nothing to sync.
 
-Tasks live as folders on disk. `git diff`, `cp -r`, `grep -r` all work. Agents can use the CLI, MCP, or edit files directly.
+- **Works with your agent.** Claude Code, Codex, Cursor, Gemini, or anything that can
+  run a shell command. MCP is there too if you prefer it.
+- **Two commands to set up.** `npm install -g`, then `taskdir init` in any project.
+  `init` installs a skill file that teaches your agent the workflow.
+- **A web UI for you.** Tasks update live, and you can edit them in place.
+- **Just files.** `ls`, `grep`, `git diff` and your editor all work on your tasks.
 
-## Task tools
+<p align="center">
+  <img src="https://raw.githubusercontent.com/Anish98821/taskdir/main/docs/webui.png" alt="The taskdir web UI listing tasks with status, priority and the agent working on each" width="800" />
+</p>
 
-Agents talk to taskdir by running shell commands — no client wiring required:
-
-```bash
-taskdir tools                              # list the commands
-taskdir create_task --title "Fix login" --mode bugfix --tags auth,frontend
-taskdir list_tasks --status in_progress
-taskdir update_status 0001 done            # required fields can be positional
-taskdir get_task 0001
-```
-
-The full surface:
-
-- `list_tasks [--status <s>] [--tag <t>] [--priority <p>]`
-- `get_task <id>` — returns all files concatenated
-- `create_task --title "..." [--context ...] [--priority ...] [--mode ...] [--tags a,b] [--agent ...]`
-- `update_status <id> <status>`
-- `update_meta <id> [--title ...] [--priority ...] [--mode ...] [--tags a,b] [--agent ...]`
-- `append_to_file <id> <filename> <content>`
-- `create_file <id> <filename>`
-- `rename_file <id> <old_name> <new_name>`
-- `delete_file <id> <filename>`
-- `list_modes` — project-defined task modes
-- `list_agents`
-- `register_agent --name "..." --provider <provider> [--id ...]`
-- `unregister_agent <id>`
-
-Run `taskdir <tool> --help` for any one.
-
-### Also available over MCP
-
-Every command above is also an MCP tool with the same name and fields, served
-by the stdio server (`taskdir mcp`) for clients that prefer it (Claude Code,
-Cursor, custom). Both surfaces are derived from the same schema, so they never
-drift.
-
-## Web UI
-
-- List view with status/priority/tags.
-- Detail view edits markdown files with basic conflict detection.
-- Live updates via chokidar → SSE.
-- Settings → agents / modes / statuses / hooks / project. Edit/preview,
-  sidebar, pane width, and new-task defaults persist across refreshes.
-
-## Modes & strategies
-
-Every task has a **mode** describing its class of work. The three built-ins
-(`plan`, `bugfix`, `research`) are just defaults — rename them, swap icons, or
-add your own in the web UI (Settings → modes) or `.taskdir/modes.toml`:
-
-```toml
-[[mode]]
-id = "triage"
-label = "Triage"
-icon = "bug"
-```
-
-Each mode can carry a **strategy** — markdown for how to approach that class of
-task — stored at `.taskdir/strategies/<mode_id>.md`. When an agent calls
-`get_task`, the strategy for the task's mode is appended to the output, so the
-guidance travels with the work. Edit strategies in Settings → modes.
-
-## Statuses
-
-Statuses are yours too. `taskdir init` seeds `pending`, `in_progress`, and
-`done`; relabel, recolor, remove, or add your own in the web UI (Settings →
-statuses) or `.taskdir/statuses.toml`:
-
-```toml
-[[status]]
-id = "in_review"
-label = "in review"
-color = "cyan"
-```
-
-Tasks whose on-disk status is no longer configured stay visible (rendered
-neutral) — the files are the source of truth.
-
-## Hooks
-
-Run a shell command or POST a webhook when things happen. Configure in the web
-UI (Settings → hooks) or edit `.taskdir/hooks.toml` directly:
-
-```toml
-[[hook]]
-event = "task.status_changed"   # or "*" for every event
-type = "command"
-command = "notify-send \"$TASKDIR_EVENT\""
-
-[[hook]]
-event = "*"
-type = "webhook"
-url = "https://example.com/taskdir"
-```
-
-Events: `task.created`, `task.status_changed`, `task.updated`, `task.deleted`,
-`agent.registered`, `agent.unregistered`.
-
-- **command** hooks get the event JSON on stdin, plus `TASKDIR_EVENT` and
-  `TASKDIR_*` env vars for each scalar payload field (e.g. `TASKDIR_ID`).
-- **webhook** hooks receive a JSON body `{ event, timestamp, data }`.
-
-A command hook can point at a command/file to run, or carry **inline code**
-directly. In the web UI (Settings → hooks) toggle "inline code" for a proper
-code editor; on disk it's a `script` block. The engine writes the script to a
-temp file and runs it, honoring a shebang (`#!/usr/bin/env node`, `#!/bin/bash`,
-…) cross-platform, or falling back to the platform shell:
-
-```toml
-[[hook]]
-event = "task.created"
-type = "command"
-script = '''
-#!/usr/bin/env node
-console.log(`new task: ${process.env.TASKDIR_ID}`)
-'''
-```
-
-Toggle a hook off without deleting it via the power button in Settings → hooks,
-or add `enabled = false` to its table. Hooks fire unless explicitly disabled:
-
-```toml
-[[hook]]
-event = "*"
-type = "webhook"
-url = "https://example.com/taskdir"
-enabled = false                  # keeps the config, stops it firing
-```
-
-Firing is best-effort and non-blocking — a slow or failing hook never blocks the
-operation that triggered it (10s timeout).
-
-## Stack
-
-- Next.js 16 (App Router) + TypeScript
-- Tailwind v4 + shadcn/ui
-- chokidar + SSE
-- MCP server hosted in-process alongside the Next.js app
-
-## Install into a project
-
-Install globally (agents invoke `taskdir` from the shell, so it needs to be on
-PATH), then initialise `.taskdir/` in the project:
+## Install
 
 ```bash
 npm install -g @anish98821/taskdir
+cd your-project
 taskdir init
 ```
 
-Creates `.taskdir/config.toml`, a tasks directory (default `.taskdir/tasks`), and `.taskdir/README.md`. Adds `.taskdir/` to `.gitignore` if a `.git` exists. Installs skill files that tell agents to drive taskdir through the CLI. Drop `AGENTS.md` into the repo so agents know the protocol.
+`init` asks which agents you use and sets up:
 
-Launch the web UI (auto-picks a free port, auto-opens the browser):
+- `.taskdir/`: config plus your tasks (in `.taskdir/tasks/`)
+- skill files for your agents: `.claude/skills/taskdir/SKILL.md` for Claude Code,
+  `.agents/skills/taskdir/SKILL.md` for Codex, Gemini and Cursor
+- a `.taskdir/` line in `.gitignore`, so tasks stay local to your checkout
+
+Pass `-y` to accept the defaults without prompts. On Windows you can instead grab
+`taskdir.exe` from the [latest release](https://github.com/Anish98821/taskdir/releases/latest)
+and run `taskdir install` to put it on PATH, with no Node needed.
+
+## Quickstart
+
+Open the web UI (it picks a free port and opens your browser):
 
 ```bash
 taskdir web
 ```
 
-Prefer MCP? Pick it during `taskdir init` (or pass `--interface mcp`) to have
-init register the server config for you, or register it manually with Claude
-Code:
+Add a task there, or from the shell:
+
+```bash
+taskdir create_task --title "Add dark mode" --priority high
+```
+
+Then ask your agent to *"work through the taskdir tasks"*.
+
+## How tasks are stored
+
+```
+.taskdir/tasks/
+  0042-add-auth/
+    status              # pending | in_progress | done, or your own statuses
+    meta.toml           # title, created_at, priority, mode, tags, agent
+    context.md          # what the task is about
+    clarification.md    # an agent's question for you, and your answer
+```
+
+Each task is a folder. Copy it, grep it, diff it, or edit it by hand. The files
+are the source of truth, and the web UI and agents both read from them.
+
+## Commands
+
+Agents (and you) run these from the shell:
+
+| Command | What it does |
+| --- | --- |
+| `list_tasks [--status s] [--tag t] [--priority p]` | List tasks, optionally filtered |
+| `get_task <id>` | Show a task with all its files |
+| `create_task --title "..." [--context ...] [--priority ...] [--mode ...] [--tags a,b] [--agent ...]` | Create a task |
+| `update_status <id> <status>` | Move a task to a new status |
+| `update_meta <id> [--title ...] [--priority ...] [--mode ...] [--tags a,b] [--agent ...]` | Edit a task's metadata |
+| `append_to_file`, `create_file`, `rename_file`, `delete_file` | Work with a task's files |
+| `list_modes` | List the project's task modes |
+| `list_agents`, `register_agent`, `unregister_agent` | Manage the agent registry |
+
+Run `taskdir tools` for the full list and `taskdir <command> --help` for any one.
+
+**MCP:** every command is also an MCP tool with the same name and fields, served
+by `taskdir mcp`. Choose MCP during `taskdir init` (or pass `--interface mcp`) and
+it registers the server for Claude Code (`.mcp.json`) and Cursor (`.cursor/mcp.json`)
+for you. To add it to Claude Code by hand:
 
 ```bash
 claude mcp add taskdir -- npx -y @anish98821/taskdir
 ```
 
-## CLI
+## Make it yours
 
-A single `taskdir` executable is installed by the npm package (and by the SEA build's `taskdir install`). Each subcommand operates on the current working directory.
+All of this is editable in the web UI under **Settings**, or directly in `.taskdir/`.
+
+- **Statuses.** `init` starts you with `pending`, `in_progress` and `done`. Rename,
+  recolor or add your own (`.taskdir/statuses.toml`).
+- **Modes.** Each task has a mode for its kind of work: `plan`, `bugfix` and
+  `research` to start. A mode can carry a **strategy**, markdown guidance that's
+  appended whenever an agent reads a task of that mode (`.taskdir/modes.toml`,
+  `.taskdir/strategies/<mode>.md`).
+- **Hooks.** Run a command or call a webhook when a task is created, changes
+  status, and so on (`.taskdir/hooks.toml`). See
+  [Hooks in the user manual](https://github.com/Anish98821/taskdir/blob/main/USER_MANUAL.md#hooks).
+
+## CLI reference
 
 ```
-taskdir init [options]         initialise .taskdir/ in the current directory
+taskdir init [options]         set up .taskdir/ in the current directory
   --tasks-dir <path>           tasks folder (default: .taskdir/tasks)
-  --interface <cli|mcp>        how agents talk to taskdir (default: cli; asked interactively)
+  --interface <cli|mcp>        how agents talk to taskdir (default: cli)
   --cli                        shorthand for --interface cli
   -y, --yes                    skip prompts
-  -h, --help
 
-taskdir mcp                    run the stdio MCP server for the current project
-
-taskdir tools                  list the task tools runnable from the shell
-taskdir <tool> [options]       run any MCP tool directly (see `taskdir tools`)
-
-taskdir web [options]          launch the web UI (auto-opens the browser)
-  -p, --port <n>               default 3000, auto-increments if busy
+taskdir web [options]          launch the web UI and open the browser
+  -p, --port <n>               default 3000, moves up if busy
       --host <addr>            default 127.0.0.1
-      --stop                   stop the instance registered for the current dir
+      --stop                   stop the instance for the current directory
       --stop-all               stop every running instance
-  -h, --help
 
-taskdir install                copy the exe into %LOCALAPPDATA% and add to user PATH (Windows)
+taskdir tools                  list the task commands
+taskdir <command> [options]    run a task command (see above)
+taskdir mcp                    run the stdio MCP server for the current project
+taskdir install                Windows .exe only: copy to %LOCALAPPDATA% and add to PATH
 taskdir version
 taskdir help
 ```
+
+Every command works on the project in the current directory.
 
 ## Development
 
 ```bash
 pnpm install
-pnpm dev
+pnpm dev        # web UI at http://localhost:3000
+pnpm test
+pnpm lint
+pnpm build
 ```
 
-Open <http://localhost:3000>. Tasks live in `./tasks/` (or the `tasks_dir` from `.taskdir/config.toml`).
-
-Checks:
-
-```bash
-npm test
-npm run lint
-npm run build
-```
-
-MCP stdio smoke test:
-
-```bash
-'{"jsonrpc":"2.0","id":1,"method":"initialize"}' | node --experimental-strip-types --no-warnings bin/taskdir.ts mcp
-'{"jsonrpc":"2.0","id":2,"method":"tools/list"}' | node --experimental-strip-types --no-warnings bin/taskdir.ts mcp
-```
-
-See `ARCHITECTURE.md` and `USER_MANUAL.md` for details.
+Built with Next.js 16, TypeScript, Tailwind v4 and shadcn/ui; live updates use
+chokidar and server-sent events. See
+[ARCHITECTURE.md](https://github.com/Anish98821/taskdir/blob/main/ARCHITECTURE.md)
+for how it fits together.
 
 ## License
 

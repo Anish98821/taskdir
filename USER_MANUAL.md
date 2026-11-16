@@ -155,6 +155,60 @@ You can create additional markdown files (notes, a `report.md`, …) from the fi
 
 The file editor supports edit and preview modes. Saves use mtime conflict detection; if a file changed on disk, Taskdir asks whether to reload or overwrite.
 
+## Hooks
+
+Run a shell command or POST a webhook when things happen. Configure in the web
+UI (Settings → hooks) or edit `.taskdir/hooks.toml` directly:
+
+```toml
+[[hook]]
+event = "task.status_changed"   # or "*" for every event
+type = "command"
+command = "notify-send \"$TASKDIR_EVENT\""
+
+[[hook]]
+event = "*"
+type = "webhook"
+url = "https://example.com/taskdir"
+```
+
+Events: `task.created`, `task.status_changed`, `task.updated`, `task.deleted`,
+`agent.registered`, `agent.unregistered`.
+
+- **command** hooks get the event JSON on stdin, plus `TASKDIR_EVENT` and
+  `TASKDIR_*` env vars for each scalar payload field (e.g. `TASKDIR_ID`).
+- **webhook** hooks receive a JSON body `{ event, timestamp, data }`.
+
+A command hook can point at a command/file to run, or carry **inline code**
+directly. In the web UI (Settings → hooks) toggle "inline code" for a proper
+code editor; on disk it's a `script` block. The engine writes the script to a
+temp file and runs it, honoring a shebang (`#!/usr/bin/env node`, `#!/bin/bash`,
+…) cross-platform, or falling back to the platform shell:
+
+```toml
+[[hook]]
+event = "task.created"
+type = "command"
+script = '''
+#!/usr/bin/env node
+console.log(`new task: ${process.env.TASKDIR_ID}`)
+'''
+```
+
+Toggle a hook off without deleting it via the power button in Settings → hooks,
+or add `enabled = false` to its table. Hooks fire unless explicitly disabled:
+
+```toml
+[[hook]]
+event = "*"
+type = "webhook"
+url = "https://example.com/taskdir"
+enabled = false                  # keeps the config, stops it firing
+```
+
+Firing is best-effort and non-blocking — a slow or failing hook never blocks the
+operation that triggered it (10s timeout).
+
 ## Sorting And Filtering
 
 The task list supports:

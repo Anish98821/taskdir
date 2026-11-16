@@ -2,6 +2,13 @@
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [SemVer](https://semver.org/).
 
+## 0.9.1 — 2026-11-16
+
+### Changed
+
+- **New README banner.** A light and dark wordmark replaces the white `banner.png` header, so it fits GitHub's dark mode. The intro line is shorter.
+- **npm package description updated** to "Local-first task tracker for you and your AI coding agent."
+
 ## 0.9.0 — 2026-11-16
 
 ### Changed

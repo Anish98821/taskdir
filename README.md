@@ -1,7 +1,7 @@
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/Anish98821/taskdir/main/docs/banner-dark.svg" />
-    <img src="https://raw.githubusercontent.com/Anish98821/taskdir/main/docs/banner-light.svg" alt="taskdir: local-first tasks for you and your coding agent" width="600" />
+    <img src="https://raw.githubusercontent.com/Anish98821/taskdir/main/docs/banner.svg" alt="taskdir: local-first tasks for you and your coding agent" width="600" />
   </picture>
 </p>
 

@@ -176,7 +176,7 @@ npm install -g @anish98821/taskdir
 taskdir init
 ```
 
-Creates `.taskdir/config.toml`, a tasks directory (default `.taskdir/tasks`), and `.taskdir/README.md`. Adds the tasks directory to `.gitignore` if a `.git` exists. Installs skill files that tell agents to drive taskdir through the CLI. Drop `AGENTS.md` into the repo so agents know the protocol.
+Creates `.taskdir/config.toml`, a tasks directory (default `.taskdir/tasks`), and `.taskdir/README.md`. Adds `.taskdir/` to `.gitignore` if a `.git` exists. Installs skill files that tell agents to drive taskdir through the CLI. Drop `AGENTS.md` into the repo so agents know the protocol.
 
 Launch the web UI (auto-picks a free port, auto-opens the browser):
 

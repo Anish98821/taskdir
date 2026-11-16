@@ -2,6 +2,17 @@
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [SemVer](https://semver.org/).
 
+## Unreleased
+
+### Changed
+
+- **`init` now ignores the whole `.taskdir/` folder.** Previously only the tasks directory was added to `.gitignore`, leaving `config.toml`, `statuses.toml`, and `.taskdir/README.md` tracked. A `--tasks-dir` pointing outside `.taskdir/` still gets its own entry.
+
+### Fixed
+
+- **`init` no longer appends redundant `.gitignore` entries.** Entries are matched by directory containment rather than exact string equality, so a repo already ignoring `.taskdir` (or `.taskdir/**`) is left untouched.
+- **`init` reports when it skips `.gitignore`.** Running outside a Git repo previously produced no output for the skipped step.
+
 ## 0.8.1 — 2026-07-20
 
 ### Changed

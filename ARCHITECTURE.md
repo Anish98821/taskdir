@@ -141,7 +141,7 @@ Tool output is plain text JSON or short acknowledgements so it stays easy for ag
 - creates `.taskdir/config.toml`
 - creates the configured task directory
 - creates `.taskdir/README.md` if missing
-- optionally appends the tasks directory to `.gitignore`
+- appends `.taskdir/` to `.gitignore` (plus the tasks directory when `--tasks-dir` points outside `.taskdir/`), skipping entries an existing pattern already covers
 - asks whether agents should talk to taskdir via the **CLI** (the default) or over **MCP** (`--interface`), then tailors the installed skill accordingly and, for MCP, registers the server in the selected client configs
 
 The default task directory is `.taskdir/tasks`, but `--tasks-dir` can point elsewhere.

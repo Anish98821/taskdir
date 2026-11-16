@@ -444,12 +444,37 @@ async function registerMcp(
   return wasPresent ? "updated" : "added";
 }
 
-async function ensureGitignoreEntry(
+interface GitignoreOutcome {
+  status: "no-git" | "written";
+  added: string[];
+  present: string[];
+}
+
+// A directory pattern already in .gitignore covers a candidate when it is the
+// same directory or an ancestor of it, so `.taskdir/` makes `.taskdir/tasks/`
+// redundant. Comments and negations never count as coverage.
+function normaliseIgnorePattern(line: string): string {
+  const trimmed = line.trim();
+  if (!trimmed || trimmed.startsWith("#") || trimmed.startsWith("!")) return "";
+  return trimmed
+    .replace(/\/\*\*$/, "")
+    .replace(/\/+$/, "")
+    .replace(/^\.\//, "")
+    .replace(/^\/+/, "");
+}
+
+function ignoreCovers(existing: string, candidate: string): boolean {
+  if (!existing) return false;
+  return existing === candidate || candidate.startsWith(`${existing}/`);
+}
+
+async function ensureGitignoreEntries(
   root: string,
-  ignoreLine: string,
-): Promise<"added" | "already-present" | "no-git" | "outside-root"> {
-  if (!ignoreLine) return "outside-root";
-  if (!(await pathExists(path.join(root, ".git")))) return "no-git";
+  ignoreLines: string[],
+): Promise<GitignoreOutcome> {
+  if (!(await pathExists(path.join(root, ".git")))) {
+    return { status: "no-git", added: [], present: [] };
+  }
   const gitignorePath = path.join(root, ".gitignore");
   let current = "";
   try {
@@ -457,19 +482,40 @@ async function ensureGitignoreEntry(
   } catch {
     current = "";
   }
-  const lines = current.split(/\r?\n/);
-  const has = lines.some((line) => line.trim() === ignoreLine);
-  if (has) return "already-present";
-  const needsLeadingNewline = current.length > 0 && !current.endsWith("\n");
-  const appended = `${current}${needsLeadingNewline ? "\n" : ""}${ignoreLine}\n`;
-  await fs.writeFile(gitignorePath, appended, "utf8");
-  return "added";
+  const existing = current.split(/\r?\n/).map(normaliseIgnorePattern);
+
+  const added: string[] = [];
+  const present: string[] = [];
+  for (const line of ignoreLines) {
+    const candidate = normaliseIgnorePattern(line);
+    if (!candidate) continue;
+    if (existing.some((pattern) => ignoreCovers(pattern, candidate))) {
+      present.push(line);
+    } else if (
+      // Covered by a line added moments ago in this same run, so writing it
+      // would be redundant and reporting it would be confusing.
+      !added.some((pattern) => ignoreCovers(normaliseIgnorePattern(pattern), candidate))
+    ) {
+      added.push(line);
+    }
+  }
+
+  if (added.length > 0) {
+    const needsLeadingNewline = current.length > 0 && !current.endsWith("\n");
+    const appended = `${current}${needsLeadingNewline ? "\n" : ""}${added.join("\n")}\n`;
+    await fs.writeFile(gitignorePath, appended, "utf8");
+  }
+  return { status: "written", added, present };
 }
 
-function gitignoreLineFor(root: string, tasksDirAbs: string): string {
+// `.taskdir/` covers config, statuses and the default tasks location. A
+// `tasks_dir` pointed somewhere else needs its own line; one outside the
+// project root cannot be ignored from here at all.
+function gitignoreLinesFor(root: string, tasksDirAbs: string): string[] {
+  const lines = [".taskdir/"];
   const rel = path.relative(root, tasksDirAbs).split(path.sep).join("/");
-  if (!rel || rel.startsWith("..")) return "";
-  return `${rel}/`;
+  if (rel && !rel.startsWith("..")) lines.push(`${rel}/`);
+  return lines;
 }
 
 interface ExistingConfig {
@@ -678,8 +724,9 @@ export async function runInit(argv: string[]): Promise<void> {
     );
   }
 
-  const ignoreLine = gitignoreLineFor(root, tasksDirAbs);
-  const gitignoreResult = await ensureGitignoreEntry(root, ignoreLine);
+  const ignoreLines = gitignoreLinesFor(root, tasksDirAbs);
+  const gitignoreResult = await ensureGitignoreEntries(root, ignoreLines);
+  const tasksDirOutsideRoot = ignoreLines.length === 1;
 
   // 6. write skill files for each selected agent (wording matches the interface)
   const skillBody = buildSkillContent(projectName || folderName, iface);
@@ -706,12 +753,20 @@ export async function runInit(argv: string[]): Promise<void> {
   process.stdout.write(
     `${alreadyInitialised ? "taskdir already initialised" : "initialised taskdir"} — project: ${projectName || folderName}, tasks: ${shownDir}\n`,
   );
-  if (gitignoreResult === "added") {
-    process.stdout.write(`added ${ignoreLine} to .gitignore\n`);
-  } else if (gitignoreResult === "already-present") {
-    process.stdout.write(`.gitignore already ignores ${ignoreLine}\n`);
-  } else if (gitignoreResult === "outside-root") {
-    process.stdout.write(`tasks dir is outside project root — skipping .gitignore\n`);
+  if (gitignoreResult.status === "no-git") {
+    process.stdout.write(`no .git in ${root} — skipping .gitignore\n`);
+  } else {
+    if (gitignoreResult.added.length > 0) {
+      process.stdout.write(`added ${gitignoreResult.added.join(", ")} to .gitignore\n`);
+    }
+    if (gitignoreResult.present.length > 0) {
+      process.stdout.write(
+        `.gitignore already ignores ${gitignoreResult.present.join(", ")}\n`,
+      );
+    }
+  }
+  if (tasksDirOutsideRoot) {
+    process.stdout.write(`tasks dir is outside project root — not ignored\n`);
   }
   for (const { opt, result } of skillResults) {
     process.stdout.write(

@@ -59,7 +59,9 @@ To choose a different task location:
 node --experimental-strip-types --no-warnings C:\Projects\taskdir\bin\taskdir.ts init --tasks-dir tasks
 ```
 
-If the target project is a Git repo and the tasks directory is inside the project, `taskdir init` adds that directory to `.gitignore`. This keeps local agent task state out of the project repo by default.
+If the target project is a Git repo, `taskdir init` adds `.taskdir/` to `.gitignore`. This keeps the whole local taskdir folder — config, statuses, and task state — out of the project repo by default. If `--tasks-dir` points somewhere outside `.taskdir/` but still inside the project, that directory is ignored too; a tasks directory outside the project root is left alone.
+
+Entries already covered by an existing `.gitignore` pattern are not duplicated. To share taskdir config with your team instead, remove the `.taskdir/` line and commit the files you want tracked.
 
 ## Point Taskdir At Another Project
 

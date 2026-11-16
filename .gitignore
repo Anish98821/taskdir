@@ -60,3 +60,6 @@ next-env.d.ts
 # npm auth — contains GitHub Packages token
 .npmrc
 
+
+# promo working files (renders, mockups) — only final docs/ media is published
+/promo/

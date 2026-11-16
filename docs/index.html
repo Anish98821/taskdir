@@ -3,469 +3,337 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>taskdir: local task management</title>
+<title>taskdir: a tracker for every project</title>
 <meta name="description" content="Filesystem-backed task tracker for AI coding agents. CLI-first, MCP available. Tasks live as folders on disk, so ls, grep, git diff all work." />
-<meta property="og:title" content="taskdir: local task management" />
+<meta property="og:title" content="taskdir: a tracker for every project" />
 <meta property="og:description" content="Filesystem-backed task tracker for AI coding agents. CLI-first, MCP available." />
 <meta property="og:image" content="https://raw.githubusercontent.com/Anish98821/taskdir/main/banner.png" />
 <meta name="twitter:card" content="summary_large_image" />
 <link rel="icon" href="favicon.jpg" type="image/jpeg" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=IBM+Plex+Sans:wght@400;500&display=swap" rel="stylesheet" />
 <style>
   :root {
-    --paper: #000000;
-    --paper-2: #141311;
-    --ink: #EFEAE0;
+    --bg-1: #17140f; --bg-2: #0c0b09; --bg-3: #060605;
+    --paper: #0c0b09;
+    --card: rgba(242, 238, 230, .025);
+    --card-hover: rgba(242, 238, 230, .05);
+    --ink: #F2EEE6;
     --ink-2: #8A8479;
-    --rule: #26231F;
+    --muted: #5f5a52;
+    --rule: rgba(242, 238, 230, .09);
+    --rule-strong: rgba(242, 238, 230, .18);
     --accent: #E8563D;
-    --accent-soft: #3A231E;
-    --ok: #7BB073;
-    --warn: #D7A64A;
+    --done: #34D399;
+    --prog: #38BDF8;
+    --claude: #D97757;
+    --glow: rgba(242, 238, 230, .32);
+    --grain: .07;
+    --ok: #34D399;
   }
   @media (prefers-color-scheme: light) {
     :root:not([data-theme="dark"]) {
-      --paper: #F6F3EC;
-      --paper-2: #ECE7DB;
-      --ink: #1A1817;
-      --ink-2: #6B6560;
-      --rule: #D9D2C1;
-      --accent: #C13F2B;
-      --accent-soft: #EAD1CA;
-      --ok: #4E7A46;
-      --warn: #B27A1E;
+      --bg-1: #F7F4EE; --bg-2: #F1EDE4; --bg-3: #E6E0D3;
+      --paper: #F4F0E8;
+      --card: rgba(25, 23, 20, .025);
+      --card-hover: rgba(25, 23, 20, .05);
+      --ink: #191714; --ink-2: #6B6560; --muted: #A39E94;
+      --rule: rgba(25, 23, 20, .1); --rule-strong: rgba(25, 23, 20, .2);
+      --accent: #C13F2B; --done: #10B981; --prog: #0EA5E9; --claude: #C2603F;
+      --glow: transparent; --grain: .05; --ok: #10B981;
     }
   }
   :root[data-theme="light"] {
-    --paper: #F6F3EC;
-    --paper-2: #ECE7DB;
-    --ink: #1A1817;
-    --ink-2: #6B6560;
-    --rule: #D9D2C1;
-    --accent: #C13F2B;
-    --accent-soft: #EAD1CA;
-    --ok: #4E7A46;
-    --warn: #B27A1E;
+    --bg-1: #F7F4EE; --bg-2: #F1EDE4; --bg-3: #E6E0D3;
+    --paper: #F4F0E8;
+    --card: rgba(25, 23, 20, .025);
+    --card-hover: rgba(25, 23, 20, .05);
+    --ink: #191714; --ink-2: #6B6560; --muted: #A39E94;
+    --rule: rgba(25, 23, 20, .1); --rule-strong: rgba(25, 23, 20, .2);
+    --accent: #C13F2B; --done: #10B981; --prog: #0EA5E9; --claude: #C2603F;
+    --glow: transparent; --grain: .05; --ok: #10B981;
   }
 
   * { box-sizing: border-box; }
-  html, body { margin: 0; padding: 0; background: var(--paper); color: var(--ink); }
+  html { background: var(--bg-3); }
+  html, body { margin: 0; padding: 0; color: var(--ink); }
   body {
-    font-family: "Fraunces", ui-serif, Georgia, serif;
-    font-optical-sizing: auto;
-    font-variation-settings: "opsz" 24;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-    line-height: 1.5;
-    font-size: 17px;
+    font-family: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
+    line-height: 1.55; font-size: 17px;
+    background:
+      radial-gradient(ellipse 1100px 900px at 15% 0, var(--bg-1), transparent 70%),
+      linear-gradient(var(--bg-2), var(--bg-3) 2400px);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+  /* film grain, like the card */
+  body::after {
+    content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 100; opacity: var(--grain);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .5 0 0 0 0 .5 0 0 0 0 .5 0 0 0 1 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
   }
   ::selection { background: var(--accent); color: var(--paper); }
-  a { color: inherit; text-decoration: none; border-bottom: 1px solid var(--rule); transition: border-color .15s; }
+  a { color: inherit; text-decoration: none; border-bottom: 1px solid var(--rule-strong); transition: border-color .15s, color .15s; }
   a:hover { border-bottom-color: var(--accent); }
-  a:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 2px; }
+  a:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 4px; }
   code, .mono { font-family: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace; }
+  code { font-size: .88em; }
 
-  .wrap { max-width: 1120px; margin: 0 auto; padding: 0 32px; }
-  @media (max-width: 640px) { .wrap { padding: 0 20px; } }
+  .wrap { max-width: 1160px; margin: 0 auto; padding: 0 32px; }
+  @media (max-width: 640px) { .wrap { padding: 0 16px; } }
 
   /* ------- top bar ------- */
   header.top {
+    position: sticky; top: 0; z-index: 20;
+    padding: 14px 0;
+    background: color-mix(in oklab, var(--bg-2) 70%, transparent);
+    backdrop-filter: saturate(1.2) blur(14px);
+    -webkit-backdrop-filter: saturate(1.2) blur(14px);
     border-bottom: 1px solid var(--rule);
-    padding: 18px 0;
-    position: sticky; top: 0;
-    background: color-mix(in oklab, var(--paper) 92%, transparent);
-    backdrop-filter: saturate(1.2) blur(8px);
-    -webkit-backdrop-filter: saturate(1.2) blur(8px);
-    z-index: 10;
   }
   .top-row { display: flex; align-items: center; justify-content: space-between; gap: 20px; }
-  .brand { display: flex; align-items: center; gap: 10px; }
-  .brand img { height: 32px; width: auto; display: block; }
-  .brand .brand-text {
-    font-family: "IBM Plex Mono"; font-weight: 500; font-size: 17px;
-    letter-spacing: -.01em; color: var(--ink);
+  .brand { display: flex; align-items: center; gap: 8px; border: none; color: var(--ink); }
+  .brand svg { width: 18px; height: 30px; display: block; }
+  .brand-text { font-family: "IBM Plex Mono"; font-weight: 500; font-size: 18px; letter-spacing: -.02em; }
+  .top-links { display: flex; align-items: center; gap: 6px; }
+  .nav { display: flex; gap: 4px; margin-right: 10px; }
+  .nav a {
+    font-family: "IBM Plex Mono"; font-size: 13px; color: var(--ink-2); border: none;
+    padding: 6px 10px; border-radius: 6px; transition: color .15s, background-color .15s;
   }
-  @media (max-width: 640px) { .brand img { height: 26px; } .brand .brand-text { font-size: 15px; } }
-  @media (prefers-color-scheme: light) {
-    :root:not([data-theme="dark"]) .brand img { filter: invert(1); }
-  }
-  :root[data-theme="light"] .brand img { filter: invert(1); }
-  :root[data-theme="dark"] .brand img { filter: none; }
-  .top-links { display: flex; align-items: center; gap: 14px; }
+  .nav a:hover { color: var(--ink); background: var(--card-hover); }
+  @media (max-width: 720px) { .nav { display: none; } }
   .gh-link, .npm-link {
     display: inline-flex; align-items: center; justify-content: center;
-    color: var(--ink-2); border: none; padding: 4px;
-    transition: color .15s;
+    color: var(--ink-2); border: none; padding: 6px; border-radius: 6px; transition: color .15s, background-color .15s;
   }
-  .gh-link:hover { color: var(--ink); }
-  .gh-link:focus-visible, .npm-link:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 4px; }
+  .gh-link:hover, .npm-link:hover { color: var(--ink); background: var(--card-hover); }
 
-  /* ------- section header ------- */
-  .path-head {
-    font-family: "IBM Plex Mono";
-    font-size: 13px;
-    color: var(--ink-2);
-    padding: 0 0 28px;
-    display: flex; align-items: baseline; gap: 14px;
-    margin-top: 96px;
+  /* ------- hero: the macro t ------- */
+  .hero {
+    /* stick's left edge: lines up with the centered content column (and the tree trunk) on wide screens */
+    --L: max(clamp(14px, 5vw, 96px), calc((100vw - 1160px) / 2 + 32px));
+    --T: clamp(12px, 1.9vw, 28px);          /* stroke thickness */
+    --X: clamp(34px, 7vw, 120px);           /* crossbar length past the stick */
+    --G: clamp(16px, 2.4vw, 36px);          /* gap between crossbar and wordmark */
+    --P: calc(var(--L) + var(--T) + var(--X) + var(--G));
+    position: relative;
+    padding: clamp(80px, 12vw, 150px) 0 calc(var(--T) + clamp(40px, 6vw, 80px));
+    margin-bottom: clamp(56px, 8vw, 110px);
   }
-  .path-head .dot { color: var(--accent); }
-  .path-head::after { content: ""; flex: 1; height: 1px; background: var(--rule); align-self: center; }
-  section:first-of-type .path-head { margin-top: 0; }
-  section { padding-bottom: 8px; }
-
-  /* ------- hero ------- */
-  .hero { padding: 72px 0 8px; }
-  .eyebrow {
-    font-family: "IBM Plex Mono"; font-size: 12px; letter-spacing: .12em; text-transform: uppercase;
-    color: var(--accent); margin-bottom: 28px;
+  .t-mark {
+    position: absolute; left: var(--L); right: 0; top: 0; bottom: 0;
+    border-left: var(--T) solid var(--ink);
+    border-bottom: var(--T) solid var(--ink);
+    border-bottom-left-radius: calc(var(--T) * 3.2);
+    filter: drop-shadow(0 0 22px var(--glow));
+    /* the fade must finish above the crossbar so stick and crossbar match */
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 min(190px, 13vw));
+            mask-image: linear-gradient(to bottom, transparent 0, #000 min(190px, 13vw));
+    pointer-events: none;
   }
+  .hero-body { padding-left: var(--P); padding-right: 32px; max-width: max(calc(var(--P) + 1000px), calc((100vw + 1160px) / 2)); }
+  @media (max-width: 640px) { .hero-body { padding-right: 16px; } }
   h1.thesis {
-    font-family: "IBM Plex Mono";
-    font-weight: 500;
-    font-size: clamp(44px, 7vw, 92px);
-    line-height: 1.02;
-    letter-spacing: -.035em;
-    margin: 0 0 28px;
-    color: var(--ink);
+    position: relative;
+    font-family: "IBM Plex Mono"; font-weight: 500;
+    font-size: clamp(56px, 10vw, 148px);
+    line-height: 1; letter-spacing: -.045em;
+    margin: 0 0 clamp(14px, 2vw, 24px); color: var(--ink);
   }
-  .subhead {
-    font-family: "Fraunces", ui-serif, Georgia, serif;
-    font-size: clamp(24px, 2.6vw, 30px);
-    line-height: 1.3;
-    color: var(--ink);
-    margin: 0 0 28px;
-    max-width: 30ch;
-    font-weight: 400;
-    letter-spacing: -.01em;
+  /* the crossbar: ├── taskdir */
+  h1.thesis::before {
+    content: ""; position: absolute; top: 54%;
+    left: calc(-1 * (var(--X) + var(--G)) - 1px); width: calc(var(--X) + 1px); height: var(--T);
+    transform: translateY(-50%);
+    background: var(--ink);
+    filter: drop-shadow(0 0 22px var(--glow));
   }
-  .lede {
-    font-size: clamp(17px, 1.6vw, 19px); line-height: 1.55; max-width: 68ch;
-    color: var(--ink-2); margin: 0 0 40px;
+  .tagline {
+    font-family: "IBM Plex Mono"; font-weight: 300;
+    font-size: clamp(20px, 2.6vw, 34px); line-height: 1.25; letter-spacing: -.02em;
+    color: var(--ink); margin: 0 0 12px;
   }
-  .lede code { color: var(--ink); }
-  .lede em { font-style: italic; color: var(--ink-2); }
+  .subhead { font-size: clamp(15px, 1.5vw, 18px); color: var(--ink-2); margin: 0 0 32px; max-width: 52ch; }
 
-  /* ------- fs viewer (terminal card) ------- */
-  .fs {
-    font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace;
-    font-size: 14px; line-height: 1.75;
-    color: var(--ink);
-    margin: 32px 0 0;
-    display: grid;
-    grid-template-columns: minmax(170px, 220px) minmax(0, 1fr);
-    border: 1px solid var(--rule);
-    border-radius: 8px;
-    background: var(--paper-2);
-    overflow: hidden;
-  }
-  @media (max-width: 780px) { .fs { grid-template-columns: 1fr; } }
-  .fs .left-pane { border-right: 1px solid var(--rule); min-width: 0; }
-  .fs .right-pane { min-width: 0; }
-  @media (max-width: 780px) {
-    .fs .right-pane { display: none; }
-    .fs .left-pane { border-right: none; }
-    .fs .row { cursor: default; }
-    .fs .row:hover .mk::before,
-    .fs .row.active .mk::before,
-    .fs .row:focus-visible .mk::before { content: "  "; color: transparent; }
-  }
-  .fs .pane-head {
-    font-size: 11.5px; color: var(--ink-2);
-    padding: 10px 16px; border-bottom: 1px solid var(--rule);
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  }
-  .fs .explorer-label { letter-spacing: .1em; text-transform: uppercase; }
-  .fs .left { padding: 16px; overflow: hidden; }
-  .fs .row {
-    display: block; white-space: pre; cursor: pointer;
-    overflow: hidden; text-overflow: ellipsis;
-  }
-  .fs .row .mk::before { content: "  "; color: transparent; }
-  .fs .row:hover .mk::before,
-  .fs .row:focus-visible .mk::before { content: "» "; color: var(--accent); }
-  .fs .row:focus-visible { outline: none; }
-  .fs .row.dir { cursor: default; }
-  .fs .row.dir:hover .mk::before { content: "  "; color: transparent; }
-  .fs .body { padding: 16px; white-space: pre-wrap; word-break: break-word; }
-  .fs .body .k { color: var(--accent); }
-  .fs .body .v { color: var(--ink); }
-  .fs .body .h { color: var(--ink); font-weight: 600; }
-  .fs .body .c { color: var(--ink-2); }
-  .fs .body .st-blocked { color: var(--accent); }
-  .fs .body .st-progress { color: var(--warn); }
-  .fs .body .st-done { color: var(--ok); }
-  .fs .prompt { color: var(--accent); user-select: none; margin-right: 4px; }
-
-  /* install ribbon */
   .install-row {
-    margin: 36px 0 0; padding: 18px 20px;
-    border: 1px solid var(--rule); border-radius: 4px;
-    background: var(--paper);
-    display: flex; align-items: center; gap: 16px;
+    display: inline-flex; align-items: center; gap: 14px; max-width: 100%;
+    padding: 10px 10px 10px 18px;
+    border: 1px solid var(--rule-strong); border-radius: 10px;
+    background: var(--card);
     font-family: "IBM Plex Mono"; font-size: 15px;
   }
   .install-row .prompt { color: var(--accent); }
-  .install-row .cmd {
-    flex: 1; min-width: 0;
-    color: var(--ink);
-    overflow-x: auto; white-space: nowrap;
-    scrollbar-width: thin;
-  }
-  @media (max-width: 640px) {
-    .install-row { align-items: flex-start; }
-    .install-row .cmd {
-      white-space: normal;
-      overflow-wrap: anywhere;
-      word-break: break-word;
-      overflow-x: visible;
-    }
-  }
+  .install-row .cmd { min-width: 0; color: var(--ink); overflow-x: auto; white-space: nowrap; scrollbar-width: none; }
   .copy-btn {
     display: inline-flex; align-items: center; justify-content: center;
-    width: 34px; height: 34px;
+    width: 34px; height: 34px; flex: none;
     color: var(--ink-2); background: transparent; border: 1px solid var(--rule);
-    border-radius: 4px; cursor: pointer;
-    transition: color .15s, border-color .15s;
-    padding: 0;
+    border-radius: 7px; cursor: pointer; padding: 0;
+    transition: color .15s, border-color .15s, transform .15s;
   }
-  .copy-btn:hover { color: var(--ink); border-color: var(--ink-2); }
-  .copy-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .copy-btn:hover { color: var(--ink); border-color: var(--rule-strong); }
+  .copy-btn:active { transform: scale(.9); }
   .copy-btn.copied { color: var(--ok); border-color: var(--ok); }
   .copy-btn .ic-check { display: none; }
   .copy-btn.copied .ic-copy { display: none; }
   .copy-btn.copied .ic-check { display: block; }
 
-  /* ------- why / three columns ------- */
-  .cols3 {
-    display: grid; grid-template-columns: repeat(3, 1fr); gap: 0;
+  .promo {
+    margin: clamp(40px, 5vw, 64px) 0 0;
+    border: 1px solid var(--rule-strong); border-radius: 14px;
+    overflow: hidden; background: #000; aspect-ratio: 16 / 9;
+    box-shadow: 0 30px 80px -30px rgba(0, 0, 0, .7);
   }
-  @media (max-width: 780px) { .cols3 { grid-template-columns: 1fr; } }
-  .col {
-    padding: 34px 30px 40px;
-    border-right: 1px solid var(--rule);
-  }
-  .col:last-child { border-right: none; }
-  @media (max-width: 780px) {
-    .col { border-right: none; border-bottom: 1px solid var(--rule); }
-    .col:last-child { border-bottom: none; }
-  }
-  .col .tag {
-    font-family: "IBM Plex Mono"; font-size: 12px; letter-spacing: .1em; text-transform: uppercase;
-    color: var(--accent); margin-bottom: 14px;
-  }
-  .col h3 {
-    font-family: "IBM Plex Mono"; font-weight: 500; font-size: 22px;
-    letter-spacing: -.02em; margin: 0 0 14px; color: var(--ink);
-  }
-  .col p { margin: 0; color: var(--ink); font-size: 17px; }
-  .col code { background: var(--paper-2); padding: 1px 6px; border-radius: 2px; font-size: 14px; }
+  .promo video { display: block; width: 100%; height: 100%; object-fit: cover; }
 
-  /* ------- notes (why) ------- */
-  .notes { margin: 0; padding: 0; display: flex; flex-direction: column; gap: 28px; }
-  .note {
-    display: grid;
-    grid-template-columns: minmax(140px, 200px) minmax(0, 1fr);
-    gap: 40px;
-    align-items: baseline;
+  /* ------- sections hang off a tree trunk ------- */
+  .tree { position: relative; padding-left: 44px; }
+  .tree::before {
+    content: ""; position: absolute; left: 8px; top: 0; bottom: 40px;
+    width: 2px; background: var(--rule-strong); border-radius: 2px;
   }
-  @media (max-width: 720px) {
-    .note { grid-template-columns: 1fr; gap: 4px; }
+  @media (max-width: 640px) { .tree { padding-left: 28px; } .tree::before { left: 4px; } }
+  section { padding-bottom: 8px; }
+  section + section { margin-top: clamp(80px, 10vw, 128px); }
+  .path-head {
+    position: relative;
+    display: flex; align-items: center; gap: 12px;
+    font-family: "IBM Plex Mono"; font-size: 15px; font-weight: 500; color: var(--ink);
+    margin: 0 0 30px;
   }
-  .note dt {
-    font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace;
-    font-size: 14px;
-    color: var(--ink-2);
-    line-height: 1.5;
-    margin: 0;
+  .path-head::before {   /* ├── connector from the trunk */
+    content: ""; position: absolute; left: -36px; top: 50%; width: 26px; height: 2px;
+    background: var(--rule-strong);
   }
-  .note dd {
-    margin: 0;
-    font-size: 18px;
-    line-height: 1.55;
-    color: var(--ink);
-    max-width: 60ch;
+  @media (max-width: 640px) { .path-head::before { left: -24px; width: 16px; } }
+  .path-head .folder { width: 20px; height: 16px; flex: none; color: var(--ink); }
+  .path-head .crumb { color: var(--ink-2); font-weight: 400; }
+  .path-head .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--done); box-shadow: 0 0 10px var(--done); }
+  .path-head .dot.prog { background: var(--prog); box-shadow: 0 0 10px var(--prog); }
+  .section-title {
+    font-family: "IBM Plex Mono"; font-weight: 500; letter-spacing: -.035em;
+    font-size: clamp(28px, 3.6vw, 44px); line-height: 1.1; margin: 0 0 36px; max-width: 22ch;
   }
 
-  /* ------- mcp grid ------- */
-  .tools-note {
-    font-size: 14.5px; color: var(--ink-2); line-height: 1.55;
-    margin: -12px 0 24px; max-width: 62ch;
+  /* ------- cards ------- */
+  .cols3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  @media (max-width: 860px) { .cols3 { grid-template-columns: 1fr; } }
+  .col, .icard {
+    padding: 28px 26px 30px;
+    background: var(--card); border: 1px solid var(--rule); border-radius: 14px;
+    transition: background-color .25s, border-color .25s, transform .25s;
   }
-  .tools-note code {
-    font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace;
-    font-size: 13px; color: var(--ink);
+  .col:hover, .icard:hover { background: var(--card-hover); border-color: var(--rule-strong); transform: translateY(-2px); }
+  .col .tag, .icard .step {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-family: "IBM Plex Mono"; font-size: 12px; letter-spacing: .06em;
+    color: var(--ink-2); margin-bottom: 18px;
   }
+  .col .tag::before, .icard .step::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--accent); }
+  .col h3, .icard h4 {
+    font-family: "IBM Plex Mono"; font-weight: 500; font-size: 21px; line-height: 1.25;
+    letter-spacing: -.025em; margin: 0 0 12px; color: var(--ink);
+  }
+  .col p, .icard p { margin: 0; color: var(--ink-2); font-size: 16px; }
+  .col code, .icard code { color: var(--ink); background: var(--card-hover); padding: 1px 6px; border-radius: 4px; }
+
+  /* ------- tools ------- */
+  .tools-note { font-size: 16px; color: var(--ink-2); margin: -16px 0 28px; max-width: 62ch; }
+  .tools-note code { color: var(--ink); }
   .tool-grid {
     list-style: none; margin: 0; padding: 0;
-    display: grid; grid-template-columns: repeat(3, 1fr);
-    border-top: 1px solid var(--rule);
-    border-left: 1px solid var(--rule);
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;
   }
-  @media (max-width: 780px) { .tool-grid { grid-template-columns: repeat(2, 1fr); } }
-  @media (max-width: 480px) { .tool-grid { grid-template-columns: 1fr; } }
+  @media (max-width: 860px) { .tool-grid { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 520px) { .tool-grid { grid-template-columns: 1fr; } }
   .tool-grid li {
-    padding: 18px 20px;
-    border-right: 1px solid var(--rule);
-    border-bottom: 1px solid var(--rule);
-    display: flex; flex-direction: column; gap: 6px;
+    padding: 16px 18px; border: 1px solid var(--rule); border-radius: 10px; background: var(--card);
+    display: flex; flex-direction: column; gap: 4px;
+    transition: background-color .2s, border-color .2s;
   }
-  .tool-grid .name {
-    font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace;
-    font-size: 15px; color: var(--ink); letter-spacing: -.005em;
-  }
-  .tool-grid .desc {
-    font-size: 13.5px; color: var(--ink-2); line-height: 1.45;
-  }
+  .tool-grid li:hover { background: var(--card-hover); border-color: var(--rule-strong); }
+  .tool-grid .name { font-family: "IBM Plex Mono"; font-size: 15px; color: var(--ink); }
+  .tool-grid .name::before { content: "$ "; color: var(--accent); }
+  .tool-grid .desc { font-size: 14px; color: var(--ink-2); line-height: 1.45; }
 
-  /* ------- web ui description ------- */
-  .web-body {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 60px;
-    align-items: center;
+  /* ------- web ui ------- */
+  .web-body { margin-bottom: 32px; }
+  .web-body .section-title { margin: 0 0 16px; }
+  .web-body .sub { margin: 0; font-size: 18px; line-height: 1.5; color: var(--ink-2); max-width: 40ch; }
+  .web-body .sub strong { color: var(--ink); font-weight: 500; }
+  .window {
+    border: 1px solid var(--rule-strong); border-radius: 14px; overflow: hidden; background: #0a0a0a;
+    box-shadow: 0 40px 100px -40px rgba(0, 0, 0, .8), 0 0 0 1px rgba(255, 255, 255, .02);
   }
-  @media (max-width: 780px) { .web-body { grid-template-columns: 1fr; gap: 30px; } }
-  .web-body .copy { min-width: 0; }
-  .web-body .head {
-    font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace;
-    font-size: 12px;
-    letter-spacing: .12em;
-    text-transform: uppercase;
-    color: var(--accent);
-    margin: 0 0 18px;
-  }
-  .web-body .sub {
-    margin: 0;
-    font-size: 22px;
-    line-height: 1.45;
-    color: var(--ink);
-    max-width: 32ch;
-    letter-spacing: -.005em;
-  }
-  .ui-shot {
-    display: block; width: 100%; height: auto;
-    border: 1px solid var(--rule); border-radius: 4px;
-  }
+  .window .bar { display: flex; align-items: center; gap: 7px; padding: 11px 14px; border-bottom: 1px solid rgba(255, 255, 255, .07); background: #121212; }
+  .window .bar i { width: 10px; height: 10px; border-radius: 50%; background: rgba(255, 255, 255, .14); }
+  .window .bar span { margin-left: 10px; font-family: "IBM Plex Mono"; font-size: 12px; color: #8A8479; }
+  .window .bar .live { margin-left: auto; display: inline-flex; align-items: center; gap: 7px; font: 500 11px "IBM Plex Mono"; letter-spacing: .08em; text-transform: uppercase; color: #38BDF8; }
+  .window .bar .live b { width: 7px; height: 7px; border-radius: 50%; background: #38BDF8; box-shadow: 0 0 8px #38BDF8; }
+  @media (prefers-reduced-motion: no-preference) { .window .bar .live b { animation: pulse 1.6s ease-in-out infinite; } }
+  .ui-shot { display: block; width: 100%; height: auto; aspect-ratio: 1280 / 600; }
 
-  /* ------- install cards ------- */
-  .install-grid {
-    display: grid; grid-template-columns: repeat(3, 1fr); gap: 0;
-  }
-  @media (max-width: 780px) { .install-grid { grid-template-columns: 1fr; } }
-  .icard {
-    padding: 30px 26px 34px; border-right: 1px solid var(--rule);
-    display: flex; flex-direction: column;
-  }
-  .icard:last-child { border-right: none; }
-  @media (max-width: 780px) {
-    .icard { border-right: none; border-bottom: 1px solid var(--rule); }
-    .icard:last-child { border-bottom: none; }
-  }
-  .icard .step {
-    font-family: "IBM Plex Mono"; font-size: 12px; color: var(--accent);
-    letter-spacing: .12em; text-transform: uppercase; margin-bottom: 14px;
-  }
-  .icard h4 {
-    font-family: "IBM Plex Mono"; font-weight: 500; font-size: 18px;
-    margin: 0 0 10px; color: var(--ink); letter-spacing: -.01em;
-  }
-  .icard p { color: var(--ink-2); font-size: 15px; margin: 0 0 18px; }
+  /* ------- install ------- */
+  .install-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  @media (max-width: 860px) { .install-grid { grid-template-columns: 1fr; } }
+  .icard { display: flex; flex-direction: column; }
+  .col, .icard, .tool-grid li { min-width: 0; }
+  .icard p { margin-bottom: 20px; font-size: 15px; }
   .icard .cmd-row {
-    margin-top: auto;
-    position: relative;
-    font-family: "IBM Plex Mono"; font-size: 13px;
-    background: var(--paper-2); border: 1px solid var(--rule); border-radius: 3px;
-    padding: 12px 44px 12px 14px;
-    color: var(--ink);
-    overflow-x: auto;
+    margin-top: auto; position: relative;
+    font-family: "IBM Plex Mono"; font-size: 13.5px;
+    background: var(--bg-3); border: 1px solid var(--rule); border-radius: 8px;
+    padding: 0 40px 0 0; color: var(--ink); overflow: hidden;
   }
+  .icard .cmd-row .c {
+    display: block; padding: 12px 6px 12px 14px; overflow-x: auto; white-space: nowrap;
+    scrollbar-width: thin; scrollbar-color: var(--rule-strong) transparent;
+  }
+  .icard .cmd-row .c::-webkit-scrollbar, .install-row .cmd::-webkit-scrollbar { height: 3px; }
+  .icard .cmd-row .c::-webkit-scrollbar-track, .install-row .cmd::-webkit-scrollbar-track { background: transparent; }
+  .icard .cmd-row .c::-webkit-scrollbar-thumb { background: var(--rule-strong); border-radius: 3px; }
+  .install-row .cmd::-webkit-scrollbar-thumb { background: transparent; }
   .icard .cmd-row .p { color: var(--accent); }
-  .icard .cmd-row .copy-btn {
-    position: absolute; top: 6px; right: 6px;
-    width: 28px; height: 28px;
-    background: transparent; border: none;
-    color: var(--ink-2); cursor: pointer;
-    display: inline-flex; align-items: center; justify-content: center;
-    padding: 0; border-radius: 3px;
-    transition: color .15s;
-  }
-  .icard .cmd-row .copy-btn:hover { color: var(--ink); }
-  .icard .cmd-row .copy-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-  .icard .cmd-row .copy-btn.copied { color: var(--ok); }
-  .icard .cmd-row .copy-btn .ic-check { display: none; }
-  .icard .cmd-row .copy-btn.copied .ic-copy { display: none; }
-  .icard .cmd-row .copy-btn.copied .ic-check { display: block; }
+  .icard .cmd-row .copy-btn { position: absolute; top: 6px; right: 6px; width: 30px; height: 30px; border: none; }
 
   /* ------- footer ------- */
   footer {
-    margin-top: 96px; padding: 32px 0 40px;
+    margin-top: clamp(96px, 12vw, 150px); padding: 28px 0 40px;
     border-top: 1px solid var(--rule);
     font-family: "IBM Plex Mono"; font-size: 13px; color: var(--ink-2);
     display: flex; align-items: center; justify-content: space-between; gap: 20px; flex-wrap: wrap;
   }
   footer a { border: none; color: var(--ink-2); display: inline-flex; align-items: center; }
   footer a:hover { color: var(--ink); }
-  footer .links { display: flex; gap: 16px; align-items: center; }
-  footer .links a { padding: 4px; }
+  footer a.byline { gap: 6px; color: var(--ink); margin-left: 8px; }
+  footer a.byline .mark { width: 10px; height: 10px; border-radius: 50%; background: #029fda; transition: transform .2s; }
+  footer a.byline:hover .mark { transform: scale(1.15); }
 
-  /* ------- interactions ------- */
-  .col { transition: background-color .3s ease; }
-  .col:hover { background: var(--paper-2); }
-  .col h3 { transition: color .2s ease; }
-  .col:hover h3 { color: var(--accent); }
-
-  .tool-grid li { transition: background-color .2s ease; }
-  .tool-grid li:hover { background: var(--paper-2); }
-  .tool-grid .name { transition: color .2s ease; }
-  .tool-grid li:hover .name { color: var(--accent); }
-
-.copy-btn { transition: color .15s, border-color .15s, transform .15s; }
-  .copy-btn:active { transform: scale(.9); }
-  .icard .cmd-row .copy-btn { transition: color .15s, transform .15s; }
-  .icard .cmd-row .copy-btn:active { transform: scale(.88); }
-
-  /* ------- motion (entrance + scroll reveal) ------- */
+  /* ------- motion ------- */
   @media (prefers-reduced-motion: no-preference) {
-    .hero .thesis, .hero .subhead, .hero .fs, .hero .install-row {
-      opacity: 0;
-      animation: heroIn .7s cubic-bezier(.16,.84,.44,1) forwards;
+    .t-mark { animation: drawIn 1.1s cubic-bezier(.16,.84,.44,1) both; }
+    @keyframes drawIn { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
+    h1.thesis::before { animation: armIn .7s .35s cubic-bezier(.16,.84,.44,1) both; transform-origin: left; }
+    @keyframes armIn { from { transform: translateY(-50%) scaleX(0); } to { transform: translateY(-50%) scaleX(1); } }
+    .hero .thesis, .hero .tagline, .hero .subhead, .hero .install-row, .hero .promo {
+      opacity: 0; animation: heroIn .7s cubic-bezier(.16,.84,.44,1) forwards;
     }
-    .hero .thesis { animation-delay: .02s; }
-    .hero .subhead { animation-delay: .13s; }
-    .hero .fs { animation-delay: .24s; }
-    .hero .install-row { animation-delay: .35s; }
-    @keyframes heroIn {
-      from { opacity: 0; transform: translateY(14px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
+    .hero .thesis { animation-delay: .1s; }
+    .hero .tagline { animation-delay: .2s; }
+    .hero .subhead { animation-delay: .28s; }
+    .hero .install-row { animation-delay: .36s; }
+    .hero .promo { animation-delay: .46s; }
+    @keyframes heroIn { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
 
-    html.motion-ready main > section:not(.hero) {
-      opacity: 0;
-      transform: translateY(18px);
+    html.motion-ready .tree > section {
+      opacity: 0; transform: translateY(18px);
       transition: opacity .6s cubic-bezier(.16,.84,.44,1), transform .6s cubic-bezier(.16,.84,.44,1);
     }
-    html.motion-ready main > section.in-view {
-      opacity: 1;
-      transform: translateY(0);
-    }
-
-    .path-head .dot {
-      display: inline-block;
-      animation: dotPulse 3.2s ease-in-out infinite;
-    }
-    @keyframes dotPulse {
-      0%, 100% { opacity: 1; }
-      50% { opacity: .5; }
-    }
-
-    .fs .body.fs-fade { animation: fsFade .3s ease; }
-    @keyframes fsFade {
-      from { opacity: 0; transform: translateY(3px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
+    html.motion-ready .tree > section.in-view { opacity: 1; transform: none; }
+    .path-head .dot.prog { animation: pulse 2.4s ease-in-out infinite; }
+    @keyframes pulse { 50% { opacity: .45; } }
   }
 </style>
 </head>
@@ -476,20 +344,27 @@
   }
 </script>
 
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="folder" viewBox="0 0 20 16"><path d="M1.5 2.5a1 1 0 0 1 1-1h4.6l1.8 2h8.6a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1h-15a1 1 0 0 1-1-1z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></symbol>
+</svg>
+
 <header class="top">
   <div class="wrap top-row">
-    <a href="./" class="brand" aria-label="taskdir home" style="border: none;">
-      <img src="icon.svg" alt="" />
+    <a href="./" class="brand" aria-label="taskdir home">
+      <svg viewBox="36 44 84 148" aria-hidden="true"><path d="M46 50V168.862C46 175.49 51.3726 180.862 58 180.862H115" stroke="currentColor" stroke-width="13" fill="none"/><path d="M48.502 112.047H80.4009" stroke="currentColor" stroke-width="12" fill="none"/></svg>
       <span class="brand-text">taskdir</span>
     </a>
     <div class="top-links">
+      <nav class="nav" aria-label="Sections">
+        <a href="#why">why</a><a href="#mcp">tools</a><a href="#web">web</a><a href="#install">install</a>
+      </nav>
       <a class="gh-link" href="https://github.com/Anish98821/taskdir" aria-label="View on GitHub">
-        <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true">
           <path d="M12 .5C5.65.5.5 5.65.5 12a11.5 11.5 0 0 0 7.86 10.92c.58.1.79-.25.79-.56v-2c-3.2.7-3.88-1.37-3.88-1.37-.52-1.34-1.28-1.7-1.28-1.7-1.05-.72.08-.7.08-.7 1.16.08 1.77 1.19 1.77 1.19 1.03 1.76 2.7 1.25 3.36.95.1-.75.4-1.26.73-1.55-2.55-.29-5.24-1.28-5.24-5.7 0-1.26.45-2.29 1.19-3.1-.12-.29-.52-1.47.11-3.06 0 0 .97-.31 3.18 1.18a11 11 0 0 1 5.79 0c2.21-1.49 3.18-1.18 3.18-1.18.63 1.59.23 2.77.12 3.06.74.81 1.19 1.84 1.19 3.1 0 4.43-2.7 5.4-5.27 5.69.41.36.78 1.06.78 2.14v3.17c0 .31.21.67.8.55A11.5 11.5 0 0 0 23.5 12C23.5 5.65 18.35.5 12 .5z"/>
         </svg>
       </a>
       <a class="npm-link" href="https://www.npmjs.com/package/@anish98821/taskdir" aria-label="View on npm">
-        <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
           <rect x="5" y="5" width="14" height="14" fill="#ffffff"/>
           <path fill="#C60000" d="M1.763 0C.786 0 0 .786 0 1.763v20.474C0 23.214.786 24 1.763 24h20.474c.977 0 1.763-.786 1.763-1.763V1.763C24 .786 23.214 0 22.237 0zM5.13 5.323l13.837.019-.009 13.836h-3.464l.01-10.382h-3.456L12.04 19.17H5.113z"/>
         </svg>
@@ -498,42 +373,40 @@
   </div>
 </header>
 
-<main class="wrap">
-
-  <!-- HERO -->
-  <section class="hero" aria-labelledby="thesis">
+<!-- HERO: the logo's t frames the page -->
+<section class="hero" aria-labelledby="thesis">
+  <div class="t-mark" aria-hidden="true"></div>
+  <div class="hero-body">
     <h1 class="thesis" id="thesis">taskdir</h1>
-    <p class="subhead">A local filesystem based task tracker for AI agents.</p>
-
-    <div class="fs" id="fs">
-      <div class="left-pane">
-        <div class="pane-head explorer-label">explorer</div>
-        <div class="left" id="fsLeft"></div>
-      </div>
-      <div class="right-pane">
-        <div class="pane-head" id="fsPath"></div>
-        <div class="body" id="fsBody"></div>
-      </div>
-    </div>
+    <p class="tagline">A tracker for every project.</p>
+    <p class="subhead">A local, filesystem-based task tracker for AI coding agents. Queue the ideas, let the agent keep going.</p>
 
     <div class="install-row" aria-label="Install command">
       <span class="prompt">$</span>
       <span class="cmd" id="installCmd">npm install -g @anish98821/taskdir</span>
       <button class="copy-btn" id="copyBtn" data-copy="npm install -g @anish98821/taskdir" aria-label="Copy install command">
-        <svg class="ic ic-copy" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <rect x="9" y="9" width="11" height="11" rx="2"/>
-          <path d="M5 15V6a2 2 0 0 1 2-2h9"/>
-        </svg>
-        <svg class="ic ic-check" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <path d="M5 12l4 4L19 6"/>
-        </svg>
+        <svg class="ic ic-copy" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></svg>
+        <svg class="ic ic-check" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l4 4L19 6"/></svg>
       </button>
     </div>
-  </section>
+
+    <figure class="promo">
+      <video id="promoVideo" autoplay muted loop playsinline preload="auto" poster="promo-poster.jpg" width="1600" height="900"
+        aria-label="taskdir in action: three new side projects, each set up with its own task tracker in one command; you queue a few ideas and move on while Claude Code works through each backlog">
+        <source src="promo-hero.mp4" type="video/mp4" />
+        <source src="promo-hero.webm" type="video/webm" />
+      </video>
+    </figure>
+  </div>
+</section>
+
+<main class="wrap">
+  <div class="tree">
 
   <!-- WHY -->
   <section id="why" aria-labelledby="why-h">
-    <div class="path-head" id="why-h"><span class="dot">●</span> why/</div>
+    <div class="path-head" id="why-h"><svg class="folder"><use href="#folder"/></svg>why/<span class="dot"></span></div>
+    <h2 class="section-title">Keep a backlog. Let the agent run.</h2>
     <div class="cols3">
       <div class="col">
         <div class="tag">a queue for the agent</div>
@@ -546,17 +419,18 @@
         <p>Tasks live in the repo next to the code. They branch when you branch, ship with the repo, and disappear when you delete it. No account, no server, no vendor.</p>
       </div>
       <div class="col">
-        <div class="tag">plain text · cli</div>
-        <h3>The format agents already read.</h3>
-        <p>Markdown and TOML. No custom schema for the model to guess at. Agents just run <code>taskdir &lt;tool&gt;</code> from the shell to list, create, and update — no client wiring. The same tools are also served over stdio MCP for clients that want it.</p>
+        <div class="tag">quick setup</div>
+        <h3>One command per project.</h3>
+        <p>Run <code>taskdir init</code> in any folder and you're tracking. It drops in an <code>AGENTS.md</code> so your agent already knows the drill. No config, no sign-up. Start a new side project and give it a backlog in seconds.</p>
       </div>
     </div>
   </section>
 
   <!-- TOOLS (CLI-first; same surface over MCP) -->
   <section id="mcp" aria-labelledby="mcp-h">
-    <div class="path-head" id="mcp-h"><span class="dot">●</span> taskdir/tools/</div>
-    <p class="tools-note">Every tool is a shell command — <code>taskdir list_tasks</code>, <code>taskdir create_task</code> — and the identical surface is exposed over stdio MCP.</p>
+    <div class="path-head" id="mcp-h"><svg class="folder"><use href="#folder"/></svg><span class="crumb">taskdir/</span>tools/<span class="dot"></span></div>
+    <h2 class="section-title">Every tool is a shell command.</h2>
+    <p class="tools-note">Agents run <code>taskdir list_tasks</code>, <code>taskdir create_task</code> and friends straight from the shell, and the identical surface is exposed over stdio MCP.</p>
     <ul class="tool-grid">
       <li><span class="name">list_tasks</span><span class="desc">Filter by status, tag, or priority.</span></li>
       <li><span class="name">get_task</span><span class="desc">Read a task folder by id.</span></li>
@@ -573,26 +447,32 @@
 
   <!-- WEB UI -->
   <section id="web" aria-labelledby="web-h">
-    <div class="path-head" id="web-h"><span class="dot">●</span> web/</div>
+    <div class="path-head" id="web-h"><svg class="folder"><use href="#folder"/></svg>web/<span class="dot prog"></span></div>
     <div class="web-body">
-      <div class="copy">
-        <p class="head">stay in the loop</p>
-        <p class="sub">Add, edit, assign, and prioritise. Everything the agent is working on, in one calm view.</p>
-      </div>
-      <img class="ui-shot" src="webui.png" width="1848" height="368" loading="lazy" alt="The taskdir web UI task list: blocked, in-progress, pending, and done tasks with priorities" />
+      <h2 class="section-title">Stay in the loop.</h2>
+      <p class="sub"><strong>Add, edit, assign, and prioritise.</strong> Everything the agent is working on, in one calm view, updating live as it works.</p>
+    </div>
+    <div class="window">
+      <div class="bar"><i></i><i></i><i></i><span>localhost:3000 · pixel-pets</span><em class="live"><b></b>live</em></div>
+      <video class="ui-shot" id="webVideo" autoplay muted loop playsinline preload="metadata" poster="webui-poster.jpg" width="1600" height="750"
+        aria-label="The taskdir web UI: Claude Code finishes a task and starts the next one while you add a new task, then open a task to read its plan">
+        <source src="webui.mp4" type="video/mp4" />
+        <source src="webui.webm" type="video/webm" />
+      </video>
     </div>
   </section>
 
   <!-- INSTALL -->
   <section id="install" aria-labelledby="install-h">
-    <div class="path-head" id="install-h"><span class="dot">●</span> install/</div>
+    <div class="path-head" id="install-h"><svg class="folder"><use href="#folder"/></svg>install/<span class="dot"></span></div>
+    <h2 class="section-title">Three commands. That's it.</h2>
     <div class="install-grid">
       <div class="icard">
         <div class="step">01 · install</div>
         <h4>Grab the package</h4>
         <p>Installs the <code>taskdir</code> CLI globally so you can run it from any project. Node 20 or newer.</p>
         <div class="cmd-row">
-          <span class="p">$</span> npm install -g @anish98821/taskdir
+          <span class="c"><span class="p">$</span> npm install -g @anish98821/taskdir</span>
           <button class="copy-btn" data-copy="npm install -g @anish98821/taskdir" aria-label="Copy install command">
             <svg class="ic ic-copy" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></svg>
             <svg class="ic ic-check" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l4 4L19 6"/></svg>
@@ -604,7 +484,7 @@
         <h4>Set up the project</h4>
         <p>Creates <code>.taskdir/</code> and drops in an <code>AGENTS.md</code> so agents drive taskdir from the shell by default. Prefer MCP? Pick it during init to register the server instead.</p>
         <div class="cmd-row">
-          <span class="p">$</span> taskdir init
+          <span class="c"><span class="p">$</span> taskdir init</span>
           <button class="copy-btn" data-copy="taskdir init" aria-label="Copy init command">
             <svg class="ic ic-copy" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></svg>
             <svg class="ic ic-check" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l4 4L19 6"/></svg>
@@ -616,7 +496,7 @@
         <h4>Open the web view</h4>
         <p>Starts the local web view and opens it in your browser. Run <code>taskdir web --stop</code> to shut it down.</p>
         <div class="cmd-row">
-          <span class="p">$</span> taskdir web
+          <span class="c"><span class="p">$</span> taskdir web</span>
           <button class="copy-btn" data-copy="taskdir web" aria-label="Copy web command">
             <svg class="ic ic-copy" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></svg>
             <svg class="ic ic-check" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l4 4L19 6"/></svg>
@@ -626,136 +506,28 @@
     </div>
   </section>
 
-  <footer>
-    <div>MIT · taskdir</div>
-    <div>built by anish98821</div>
-  </footer>
+  </div>
 
+  <footer>
+    <div>© 2026 · MIT · taskdir</div>
+    <div>built by<a class="byline" href="https://anishu.dev" target="_blank" rel="noopener"><span class="mark" aria-hidden="true"></span>Anish U</a></div>
+  </footer>
 </main>
 
 <script>
-  // ---------- fs viewer ----------
-  const rows = [
-    { line: "tasks/", dir: true },
-    { line: "├── 0038-invite-flow/", dir: true },
-    { line: "│   ├── status", path: "tasks/0038-invite-flow/status", kind: "status", body: "blocked" },
-    { line: "│   ├── meta.toml", path: "tasks/0038-invite-flow/meta.toml", kind: "toml", body:
-`title = "clarify API surface for /invite"
-priority = "P0"
-mode = "plan"
-tags = ["api", "auth"]
-generate_report = true
-agent = "claude-opus-4-7"
-created_at = 2026-07-01T14:22:00Z` },
-    { line: "│   └── clarification.md", path: "tasks/0038-invite-flow/clarification.md", kind: "md", body:
-`# Blocking question
-
-The spec says invited users receive a magic link, but does
-not specify whether the link expires. What is the TTL?
-
-Options considered:
-- 15 minutes (matches password reset)
-- 24 hours (matches Slack)
-- never (matches Notion)
-
-Awaiting product decision.` },
-    { line: "├── 0042-add-auth/", dir: true },
-    { line: "│   ├── status", path: "tasks/0042-add-auth/status", kind: "status", body: "in_progress" },
-    { line: "│   ├── meta.toml", path: "tasks/0042-add-auth/meta.toml", kind: "toml", body:
-`title = "add auth"
-priority = "P1"
-mode = "build"
-tags = ["auth", "backend"]
-generate_report = true
-agent = "claude-opus-4-7"
-created_at = 2026-07-05T09:10:00Z` },
-    { line: "│   ├── context.md", path: "tasks/0042-add-auth/context.md", kind: "md", body:
-`# Context
-
-Add session auth to the /api routes. Use HTTP-only cookies.
-
-## Constraints
-
-- No third-party auth provider (legal review pending)
-- Must work with the existing SSR pages
-- Session TTL: 14 days, sliding
-
-## Out of scope
-
-- OAuth
-- Password reset (see 0055)` },
-    { line: "│   └── report.md", path: "tasks/0042-add-auth/report.md", kind: "md", body:
-`# Report
-
-## 2026-07-07 09:14 · claude-opus-4-7
-
-- Added \`/api/auth/session\` handler.
-- Wrote 6 unit tests, 3 integration.
-- One TODO: rotate session cookie on privilege change.
-
-Next: wire login form to the new endpoint.` },
-    { line: "└── 0043-rate-limit/", dir: true },
-    { line: "    ├── status", path: "tasks/0043-rate-limit/status", kind: "status", body: "in_progress" },
-    { line: "    └── meta.toml", path: "tasks/0043-rate-limit/meta.toml", kind: "toml", body:
-`title = "rate-limit login attempts"
-priority = "P1"
-mode = "build"
-tags = ["auth", "security"]
-generate_report = true
-agent = "claude-opus-4-7"
-created_at = 2026-07-06T16:05:00Z` },
-  ];
-
-  const escape = s => s.replace(/&/g, "&amp;").replace(/</g, "&lt;");
-  function render(kind, body) {
-    if (kind === "toml") {
-      return escape(body)
-        .replace(/^([a-z_]+)\s*=/gm, '<span class="k">$1</span> =')
-        .replace(/"([^"]*)"/g, '<span class="v">"$1"</span>');
-    }
-    if (kind === "md") {
-      return escape(body)
-        .replace(/^(#{1,3}\s.*)$/gm, '<span class="h">$1</span>')
-        .replace(/^(-\s.*)$/gm, '<span class="c">$1</span>');
-    }
-    if (kind === "status") {
-      const cls = body === "blocked" ? "st-blocked" : body === "done" ? "st-done" : "st-progress";
-      return `<span class="${cls}">${escape(body)}</span>`;
-    }
-    return escape(body);
+  // ---------- promo video: respect reduced motion ----------
+  const promo = document.getElementById("promoVideo");
+  if (promo && window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    promo.removeAttribute("autoplay");
+    promo.pause();
+    promo.controls = true;
   }
-
-  const left = document.getElementById("fsLeft");
-  const pathEl = document.getElementById("fsPath");
-  const bodyEl = document.getElementById("fsBody");
-
-  rows.forEach((r, i) => {
-    const el = document.createElement("div");
-    el.className = "row" + (r.dir ? " dir" : "");
-    el.dataset.i = i;
-    if (!r.dir) el.tabIndex = 0;
-    el.innerHTML = `<span class="mk"></span><span class="ln">${escape(r.line)}</span>`;
-    if (!r.dir) {
-      el.addEventListener("mouseenter", () => select(i));
-      el.addEventListener("focus", () => select(i));
-    }
-    left.appendChild(el);
-  });
-
-  function select(i) {
-    document.querySelectorAll("#fsLeft .row").forEach(r => r.classList.remove("active"));
-    const el = left.querySelector(`.row[data-i="${i}"]`);
-    if (el) el.classList.add("active");
-    const r = rows[i];
-    pathEl.innerHTML = `<span class="prompt">$</span>cat ${escape(r.path)}`;
-    bodyEl.innerHTML = render(r.kind, r.body);
-    bodyEl.classList.remove("fs-fade");
-    void bodyEl.offsetWidth;
-    bodyEl.classList.add("fs-fade");
+  const webVideo = document.getElementById("webVideo");
+  if (webVideo && window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    webVideo.removeAttribute("autoplay");
+    webVideo.pause();
+    webVideo.controls = true;
   }
-
-  const defaultIdx = rows.findIndex(r => r.path === "tasks/0042-add-auth/context.md");
-  select(defaultIdx);
 
   // ---------- copy button ----------
   document.querySelectorAll(".copy-btn").forEach(btn => {
@@ -778,7 +550,7 @@ created_at = 2026-07-06T16:05:00Z` },
         }
       });
     }, { threshold: 0.12, rootMargin: "0px 0px -60px 0px" });
-    document.querySelectorAll("main > section:not(.hero)").forEach(s => revealObserver.observe(s));
+    document.querySelectorAll(".tree > section").forEach(s => revealObserver.observe(s));
   }
 </script>
 
